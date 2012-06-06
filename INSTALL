@@ -11,3 +11,7 @@ To build, run
 from the root directory of the repository to create the platform-specific build file.
 On Mac OS X, to create a Makefile instead of an XCode project, run:
     qmake -spec macx-g++
+To turn on optimization flags (otherwise OpenMesh is very slow), add -config release to qmake:
+    qmake -config release
+or in my case:
+    qmake -spec macx-g++ -config release

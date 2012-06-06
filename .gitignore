@@ -3,5 +3,7 @@
 /moc_glwidget.cpp
 /moc_mainwindow.cpp
 /VViewer.app
+/VViewer
 Makefile
 /ext
+/data
