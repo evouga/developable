@@ -1,0 +1,13 @@
+Create an ext directory:
+    mkdir ext
+and add links to Eigen and OpenMesh.  For example, on my machine:
+    cd ext
+    ln -s /Installers/eigen/eigen-3.0.5 eigen
+    ln -s ~/Work/ext/OpenMesh-2.1.1 OpenMesh
+Note that those are symlinks to the root of the unarchived download.
+
+To build, run
+    qmake
+from the root directory of the repository to create the platform-specific build file.
+On Mac OS X, to create a Makefile instead of an XCode project, run:
+    qmake -spec macx-g++

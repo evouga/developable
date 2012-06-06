@@ -35,9 +35,15 @@ HEADERS += \
     controller.h \
     meshcurvature.h
 
-LIBS    += -lGLU -lpng -L/home/evouga/OpenMesh-2.0.1/build/Build/lib/OpenMesh/ -lOpenMeshCore
+LIBS    += -lGLU -lpng -Lext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
 
-INCLUDEPATH    += /home/evouga/eigen/ /home/evouga/OpenMesh-2.0.1/src/
+INCLUDEPATH    += ext/eigen/ ext/OpenMesh/src
+
+macx {
+    ## png from macports (X11 png didn't work) and GLU from OpenGL.framework
+    LIBS += -L/opt/local/lib -L/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries
+    INCLUDEPATH += /opt/local/include
+}
 
 QMAKE_CXXFLAGS += -g
 

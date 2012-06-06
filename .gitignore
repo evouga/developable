@@ -1,0 +1,7 @@
+*.o
+/ui_mainwindow.h
+/moc_glwidget.cpp
+/moc_mainwindow.cpp
+/VViewer.app
+Makefile
+/ext
