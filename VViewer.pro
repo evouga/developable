@@ -21,7 +21,8 @@ SOURCES += main.cpp \
     yimage.cpp \
     mesh.cpp \
     controller.cpp \
-    meshcurvature.cpp
+    meshcurvature.cpp \
+    meshcontours.cpp
 
 HEADERS += \
     mainwindow.h \

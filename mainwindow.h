@@ -25,11 +25,12 @@ public:
     void saveScreenshot();
     void showError(const std::string &error);
     void centerCamera();
-    bool showWireframe();
-    bool smoothShade();
-    Mesh::HeatMap getHeatMapType();
-    double curvatureCutoff();
-    bool showRulings();
+    const bool showWireframe();
+    const bool smoothShade();
+    const Mesh::HeatMap getHeatMapType();
+    const double curvatureCutoff();
+    const bool showRulings();
+    const bool showContours();
     
 private slots:
     void on_actionExit_triggered();
@@ -53,6 +54,10 @@ private slots:
     void on_cutoffSlider_actionTriggered(int action);
 
     void on_rulingsBox_clicked();
+
+    void on_contoursBox_clicked();
+
+    void on_contoursSlider_valueChanged(int value);
 
 private:
     void updateGL();

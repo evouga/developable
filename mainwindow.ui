@@ -20,177 +20,295 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="GLWidget" name="GLwidget" native="true">
-    <property name="geometry">
-     <rect>
-      <x>9</x>
-      <y>9</y>
-      <width>1421</width>
-      <height>1131</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QGroupBox" name="curvatureBox">
-    <property name="geometry">
-     <rect>
-      <x>1440</x>
-      <y>110</y>
-      <width>151</width>
-      <height>191</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Curvature Heat Map</string>
-    </property>
-    <widget class="QRadioButton" name="meanCurvatureButton">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>40</y>
-       <width>116</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Mean</string>
-     </property>
-    </widget>
-    <widget class="QRadioButton" name="gaussianCurvatureButton">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>60</y>
-       <width>116</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Gaussian</string>
-     </property>
-    </widget>
-    <widget class="QRadioButton" name="noneCurvatureButton">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>20</y>
-       <width>116</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>None</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="QSlider" name="cutoffSlider">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>90</y>
-       <width>151</width>
-       <height>29</height>
-      </rect>
-     </property>
-     <property name="minimum">
-      <number>1</number>
-     </property>
-     <property name="maximum">
-      <number>500</number>
-     </property>
-     <property name="value">
-      <number>100</number>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="cutoffLabel">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>120</y>
-       <width>70</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Cutoff:</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="curvatureCutoff">
-     <property name="geometry">
-      <rect>
-       <x>70</x>
-       <y>120</y>
-       <width>70</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>0.1</string>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QGroupBox" name="renderingBox">
-    <property name="geometry">
-     <rect>
-      <x>1440</x>
-      <y>10</y>
-      <width>151</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Rendering</string>
-    </property>
-    <widget class="QCheckBox" name="smoothShadeCheckBox">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>20</y>
-       <width>131</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Smooth Shade</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="wireframeCheckBox">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>40</y>
-       <width>151</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Show Wireframe</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="rulingsBox">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>60</y>
-       <width>131</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Show Rulings</string>
-     </property>
-    </widget>
-   </widget>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="GLWidget" name="GLwidget" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>100</width>
+        <height>100</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="widget" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>210</width>
+        <height>310</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>190</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <widget class="QWidget" name="verticalLayoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>192</width>
+         <height>312</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_9">
+        <item>
+         <widget class="QGroupBox" name="renderingBox">
+          <property name="minimumSize">
+           <size>
+            <width>190</width>
+            <height>130</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>170</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="title">
+           <string>Rendering</string>
+          </property>
+          <widget class="QCheckBox" name="smoothShadeCheckBox">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>20</y>
+             <width>131</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Smooth Shade</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+          <widget class="QCheckBox" name="wireframeCheckBox">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>40</y>
+             <width>151</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Show Wireframe</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+          <widget class="QCheckBox" name="rulingsBox">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>60</y>
+             <width>131</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Show Rulings</string>
+           </property>
+          </widget>
+          <widget class="QCheckBox" name="contoursBox">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>80</y>
+             <width>131</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Show Contours</string>
+           </property>
+          </widget>
+          <widget class="QSlider" name="contoursSlider">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>110</y>
+             <width>171</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="minimum">
+            <number>2</number>
+           </property>
+           <property name="maximum">
+            <number>100</number>
+           </property>
+           <property name="tracking">
+            <bool>true</bool>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="invertedAppearance">
+            <bool>false</bool>
+           </property>
+           <property name="invertedControls">
+            <bool>false</bool>
+           </property>
+          </widget>
+          <widget class="QLabel" name="contoursLabel">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>130</y>
+             <width>141</width>
+             <height>16</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Number of Contours:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="numContours">
+           <property name="geometry">
+            <rect>
+             <x>150</x>
+             <y>130</y>
+             <width>31</width>
+             <height>20</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>2</string>
+           </property>
+          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="curvatureBox">
+          <property name="minimumSize">
+           <size>
+            <width>190</width>
+            <height>150</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>170</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="title">
+           <string>Curvature Heat Map</string>
+          </property>
+          <widget class="QRadioButton" name="meanCurvatureButton">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>40</y>
+             <width>116</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Mean</string>
+           </property>
+          </widget>
+          <widget class="QRadioButton" name="gaussianCurvatureButton">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>60</y>
+             <width>116</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Gaussian</string>
+           </property>
+          </widget>
+          <widget class="QRadioButton" name="noneCurvatureButton">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>20</y>
+             <width>116</width>
+             <height>22</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>None</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+          <widget class="QSlider" name="cutoffSlider">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>90</y>
+             <width>171</width>
+             <height>29</height>
+            </rect>
+           </property>
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>500</number>
+           </property>
+           <property name="value">
+            <number>100</number>
+           </property>
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+          <widget class="QLabel" name="cutoffLabel">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>120</y>
+             <width>70</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Cutoff:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="curvatureCutoff">
+           <property name="geometry">
+            <rect>
+             <x>70</x>
+             <y>120</y>
+             <width>70</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>0.1</string>
+           </property>
+          </widget>
+          <zorder>meanCurvatureButton</zorder>
+          <zorder>gaussianCurvatureButton</zorder>
+          <zorder>noneCurvatureButton</zorder>
+          <zorder>cutoffSlider</zorder>
+          <zorder>cutoffLabel</zorder>
+          <zorder>curvatureCutoff</zorder>
+          <zorder>renderingBox</zorder>
+          <zorder>renderingBox</zorder>
+          <zorder>wireframeCheckBox</zorder>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -198,7 +316,7 @@
      <x>0</x>
      <y>0</y>
      <width>1600</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuVViewer">
