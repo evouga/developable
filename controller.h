@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 #include <Eigen/Core>
+#include "meshcurvature.h"
 
 class MainWindow;
 
@@ -19,6 +20,7 @@ public:
 private:
     MainWindow &mw_;
     Mesh m_;
+    MeshCurvature mc_;
 };
 
 #endif // CONTROLLER_H

@@ -69,6 +69,34 @@ bool MainWindow::smoothShade()
     return ui->smoothShadeCheckBox->isChecked();
 }
 
+Mesh::HeatMap MainWindow::getHeatMapType()
+{
+    if(ui->noneCurvatureButton->isChecked())
+        return Mesh::HM_NONE;
+    else if(ui->meanCurvatureButton->isChecked())
+        return Mesh::HM_MEAN;
+    else if(ui->gaussianCurvatureButton->isChecked())
+        return Mesh::HM_GAUSSIAN;
+    return Mesh::HM_NONE;
+}
+
+void MainWindow::updateGL()
+{
+    ui->GLwidget->updateGL();
+}
+
+double MainWindow::curvatureCutoff()
+{
+    return ui->cutoffSlider->value()*0.001;
+}
+
+bool MainWindow::showRulings()
+{
+    return ui->rulingsBox->isChecked();
+}
+
+
+
 void MainWindow::on_actionExit_triggered()
 {
     assert(cont_);
@@ -84,21 +112,47 @@ void MainWindow::on_actionLoad_OBJ_triggered()
 void MainWindow::on_actionReset_Camera_triggered()
 {
     centerCamera();
-    ui->GLwidget->updateGL();
+    updateGL();
 }
 
 void MainWindow::on_actionTake_Screenshot_triggered()
 {
     saveScreenshot();
-    ui->GLwidget->updateGL();
+    updateGL();
 }
 
 void MainWindow::on_wireframeCheckBox_clicked()
 {
-    ui->GLwidget->updateGL();
+    updateGL();
 }
 
 void MainWindow::on_smoothShadeCheckBox_clicked()
 {
-    ui->GLwidget->updateGL();
+    updateGL();
+}
+
+void MainWindow::on_gaussianCurvatureButton_clicked()
+{
+    updateGL();
+}
+
+void MainWindow::on_meanCurvatureButton_clicked()
+{
+    updateGL();
+}
+
+void MainWindow::on_noneCurvatureButton_clicked()
+{
+    updateGL();
+}
+
+void MainWindow::on_cutoffSlider_actionTriggered(int )
+{
+    ui->curvatureCutoff->setText(QString::number(ui->cutoffSlider->value()*0.001));
+    updateGL();
+}
+
+void MainWindow::on_rulingsBox_clicked()
+{
+    updateGL();
 }

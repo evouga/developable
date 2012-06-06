@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <string>
+#include "mesh.h"
 
 class Controller;
 
@@ -26,6 +27,9 @@ public:
     void centerCamera();
     bool showWireframe();
     bool smoothShade();
+    Mesh::HeatMap getHeatMapType();
+    double curvatureCutoff();
+    bool showRulings();
     
 private slots:
     void on_actionExit_triggered();
@@ -40,7 +44,19 @@ private slots:
 
     void on_smoothShadeCheckBox_clicked();
 
+    void on_gaussianCurvatureButton_clicked();
+
+    void on_meanCurvatureButton_clicked();
+
+    void on_noneCurvatureButton_clicked();
+
+    void on_cutoffSlider_actionTriggered(int action);
+
+    void on_rulingsBox_clicked();
+
 private:
+    void updateGL();
+
     Ui::MainWindow *ui;
     Controller *cont_;
 };

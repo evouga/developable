@@ -8,19 +8,25 @@
 typedef OpenMesh::TriMesh_ArrayKernelT<OpenMesh::DefaultTraits>  OMMesh;
 
 class GLUquadric;
+class MeshCurvature;
 
 class Mesh
 {
 public:
+    enum HeatMap {HM_NONE, HM_MEAN, HM_GAUSSIAN};
+
     Mesh();
     ~Mesh();
 
     bool loadMesh(const std::string &filename);
     OMMesh &getMesh() {return mesh_;}
-    void render(bool showWireframe, bool smoothShade);
+    void render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatMap type, double cutoff);
 
     Eigen::Vector3d centroid();
     double radius();
+
+    Eigen::Vector3d vertexNormal(int vidx);
+    double shortestAdjacentEdge(int vidx);
 
 private:
     OMMesh mesh_;
@@ -28,6 +34,7 @@ private:
 
     void edgeEndpoints(OMMesh::EdgeHandle eh, OMMesh::Point &pt1, OMMesh::Point &pt2);
     void drawSphere(int vertex);
+    Eigen::Vector3d heatmap(double val, double max);
 };
 
 #endif // MESH_H

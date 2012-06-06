@@ -1,6 +1,8 @@
 #include <OpenMesh/Core/IO/MeshIO.hh>
 #include "mesh.h"
 #include <GL/glu.h>
+#include <Eigen/Dense>
+#include "meshcurvature.h"
 
 using namespace std;
 using namespace Eigen;
@@ -20,8 +22,9 @@ bool Mesh::loadMesh(const string &filename)
     return OpenMesh::IO::read_mesh(mesh_, filename);
 }
 
-void Mesh::render(bool showWireframe, bool smoothShade)
+void Mesh::render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatMap type, double cutoff)
 {
+
     glEnable(GL_LIGHTING);
     glEnable(GL_DITHER);
 
@@ -38,26 +41,63 @@ void Mesh::render(bool showWireframe, bool smoothShade)
         glShadeModel(GL_FLAT);
     }
 
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+
+    static vector<GLfloat> colors;
+    static vector<int> indices;
+    static vector<GLfloat> pos;
+    static vector<GLfloat> normal;
+
+    colors.clear();
+    indices.clear();
+    pos.clear();
+    normal.clear();
+
+    for(int i=0; i<(int)mesh_.n_vertices(); i++)
+    {
+        OMMesh::VertexHandle v = mesh_.vertex_handle(i);
+        Vector3d color(0.0, 186/255., 0.0);
+        if(type == HM_GAUSSIAN)
+        {
+            double curvature = mc.gaussianCurvature(v.idx());
+            color = heatmap(curvature, cutoff);
+        }
+        else if(type == HM_MEAN)
+        {
+            double curvature = mc.meanCurvature(v.idx());
+            color = heatmap(curvature, cutoff);
+        }
+
+        OMMesh::Point pt = mesh_.point(v);
+        OMMesh::Point n;
+        mesh_.calc_vertex_normal_correct(v, n);
+        n.normalize();
+        for(int j=0; j<3; j++)
+        {
+            pos.push_back(pt[j]);
+            normal.push_back(n[j]);
+            colors.push_back(color[j]);
+        }
+    }
+
+    glVertexPointer(3, GL_FLOAT, 0, &pos[0]);
+    glNormalPointer(GL_FLOAT, 0, &normal[0]);
+    glColorPointer(3, GL_FLOAT, 0, &colors[0]);
+
     OMMesh::ConstFaceIter f, fEnd = mesh_.faces_end();
     int i=0;
     for (f = mesh_.faces_begin(); f != fEnd; ++f,i++) {
-
-        glBegin(GL_POLYGON);
         for (OMMesh::ConstFaceVertexIter v = mesh_.cfv_iter(f); v; ++v) {
-            glColor3f(156/255., 186/255., 214/255.);
-
-            OMMesh::Point pt = mesh_.point(v);
-            OMMesh::Point n;
-            mesh_.calc_vertex_normal_correct(v, n);
-            n.normalize();
-            glNormal3d(n[0], -fabs(n[1]), n[2]);
-            double offset = 0.0;
-            glVertex3d(pt[0]+offset*n[0],pt[1]+offset*n[1],pt[2]+offset*n[2]);
-
+            indices.push_back(v.handle().idx());
         }
-        glEnd();
     }
+    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, &indices[0]);
 
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
     glDisable(GL_POLYGON_OFFSET_FILL);
 
     if(showWireframe)
@@ -136,4 +176,43 @@ double Mesh::radius()
             maxradius = radius;
     }
     return sqrt(maxradius);
+}
+
+Vector3d Mesh::vertexNormal(int vidx)
+{
+    assert(0 <= vidx && vidx <= (int)mesh_.n_vertices());
+    OMMesh::VertexHandle vh = mesh_.vertex_handle(vidx);
+    OMMesh::Normal normal;
+    mesh_.calc_vertex_normal_correct(vh, normal);
+    Vector3d result(normal[0], normal[1], normal[2]);
+    result.normalize();
+    return result;
+}
+
+double Mesh::shortestAdjacentEdge(int vidx)
+{
+    assert(0 <= vidx && vidx <= (int)mesh_.n_vertices());
+    OMMesh::VertexHandle vh = mesh_.vertex_handle(vidx);
+    double mindist = std::numeric_limits<double>::infinity();
+    for(OMMesh::VertexEdgeIter vei = mesh_.ve_iter(vh); vei; ++vei)
+    {
+        double dist = mesh_.calc_edge_sqr_length(vei.handle());
+        if(dist < mindist)
+            mindist = dist;
+    }
+    return sqrt(mindist);
+}
+
+Vector3d Mesh::heatmap(double val, double max)
+{
+    if(val < 0)
+    {
+        val = 1.0 - std::min(fabs(val), max)/max;
+        return Vector3d(val, val, 1.0);
+    }
+    else
+    {
+        val = 1.0 - std::min(val, max)/max;
+        return Vector3d(1.0, val, val);
+    }
 }
