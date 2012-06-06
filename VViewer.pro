@@ -35,9 +35,9 @@ HEADERS += \
     controller.h \
     meshcurvature.h
 
-LIBS    += -lGLU -lpng -Lext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
 
-INCLUDEPATH    += ext/eigen/ ext/OpenMesh/src
+INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework
