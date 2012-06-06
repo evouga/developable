@@ -2,8 +2,8 @@
 /ui_mainwindow.h
 /moc_glwidget.cpp
 /moc_mainwindow.cpp
+/VViewer.pro.user
 /VViewer.app
-/VViewer
 Makefile
 /ext
 /data
