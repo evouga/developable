@@ -59,17 +59,17 @@ void MainWindow::saveScreenshot()
     ui->GLwidget->saveScreenshot(filename);
 }
 
-bool MainWindow::showWireframe()
+const bool MainWindow::showWireframe()
 {
     return ui->wireframeCheckBox->isChecked();
 }
 
-bool MainWindow::smoothShade()
+const bool MainWindow::smoothShade()
 {
     return ui->smoothShadeCheckBox->isChecked();
 }
 
-Mesh::HeatMap MainWindow::getHeatMapType()
+const Mesh::HeatMap MainWindow::getHeatMapType()
 {
     if(ui->noneCurvatureButton->isChecked())
         return Mesh::HM_NONE;
@@ -85,16 +85,20 @@ void MainWindow::updateGL()
     ui->GLwidget->updateGL();
 }
 
-double MainWindow::curvatureCutoff()
+const double MainWindow::curvatureCutoff()
 {
     return ui->cutoffSlider->value()*0.001;
 }
 
-bool MainWindow::showRulings()
+const bool MainWindow::showRulings()
 {
     return ui->rulingsBox->isChecked();
 }
 
+const bool MainWindow::showContours()
+{
+    return ui->contoursBox->isChecked();
+}
 
 
 void MainWindow::on_actionExit_triggered()
@@ -133,26 +137,49 @@ void MainWindow::on_smoothShadeCheckBox_clicked()
 
 void MainWindow::on_gaussianCurvatureButton_clicked()
 {
+    assert( cont_ );
+    cont_->setNumContours( ui->contoursSlider->value() );
     updateGL();
 }
 
 void MainWindow::on_meanCurvatureButton_clicked()
 {
+    assert( cont_ );
+    {
+        cont_->setNumContours( ui->contoursSlider->value() );
+    }
     updateGL();
 }
 
 void MainWindow::on_noneCurvatureButton_clicked()
 {
+    assert( cont_ );
+    cont_->setNumContours( ui->contoursSlider->value() );
     updateGL();
 }
 
 void MainWindow::on_cutoffSlider_actionTriggered(int )
 {
     ui->curvatureCutoff->setText(QString::number(ui->cutoffSlider->value()*0.001));
+    if( ui->contoursBox->isChecked() ) cont_->setNumContours( ui->contoursSlider->value() );
     updateGL();
 }
 
 void MainWindow::on_rulingsBox_clicked()
 {
+    updateGL();
+}
+
+void MainWindow::on_contoursBox_clicked()
+{
+    if( ui->contoursBox->isChecked() ) cont_->setNumContours( ui->contoursSlider->value() );
+    updateGL();
+}
+
+void MainWindow::on_contoursSlider_valueChanged(int value)
+{
+    ui->numContours->setText(QString::number(value));
+    assert( cont_ );
+    cont_->setNumContours( value );
     updateGL();
 }

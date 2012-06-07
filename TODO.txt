@@ -1,0 +1,10 @@
+== TODO ==
+
+- Sum total curvature in vertices above/below the cutoff versus everywhere.
+- Stream lines for principal curvatures
+- Is there a problem with the curvature computation?
+
+
+== DONE ==
+
++(buggy) Draw contour lines (2 or more) in the range [-cutoff,cutoff].
