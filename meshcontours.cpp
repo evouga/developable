@@ -3,7 +3,7 @@
 #include <cassert>
 #include <algorithm>
 
-#include <gl/gl.h>
+#include <GL/gl.h>
 
 namespace
 {
@@ -103,7 +103,7 @@ void MeshContours::precomputeContoursAtValuesForMeshUsingVertexValues(
     m_contours = ContoursAtValuesForMeshUsingVertexValues( isovalues, mesh, vertex_values );
 }
 
-const void MeshContours::renderContours()
+void MeshContours::renderContours() const
 {
     glDisable( GL_LIGHTING );
     

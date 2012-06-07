@@ -59,17 +59,17 @@ void MainWindow::saveScreenshot()
     ui->GLwidget->saveScreenshot(filename);
 }
 
-const bool MainWindow::showWireframe()
+bool MainWindow::showWireframe() const
 {
     return ui->wireframeCheckBox->isChecked();
 }
 
-const bool MainWindow::smoothShade()
+bool MainWindow::smoothShade() const
 {
     return ui->smoothShadeCheckBox->isChecked();
 }
 
-const Mesh::HeatMap MainWindow::getHeatMapType()
+Mesh::HeatMap MainWindow::getHeatMapType() const
 {
     if(ui->noneCurvatureButton->isChecked())
         return Mesh::HM_NONE;
@@ -85,17 +85,17 @@ void MainWindow::updateGL()
     ui->GLwidget->updateGL();
 }
 
-const double MainWindow::curvatureCutoff()
+double MainWindow::curvatureCutoff() const
 {
     return ui->cutoffSlider->value()*0.001;
 }
 
-const bool MainWindow::showRulings()
+bool MainWindow::showRulings() const
 {
     return ui->rulingsBox->isChecked();
 }
 
-const bool MainWindow::showContours()
+bool MainWindow::showContours() const
 {
     return ui->contoursBox->isChecked();
 }

@@ -25,12 +25,12 @@ public:
     void saveScreenshot();
     void showError(const std::string &error);
     void centerCamera();
-    const bool showWireframe();
-    const bool smoothShade();
-    const Mesh::HeatMap getHeatMapType();
-    const double curvatureCutoff();
-    const bool showRulings();
-    const bool showContours();
+    bool showWireframe() const;
+    bool smoothShade() const;
+    Mesh::HeatMap getHeatMapType() const;
+    double curvatureCutoff() const;
+    bool showRulings() const;
+    bool showContours() const;
     
 private slots:
     void on_actionExit_triggered();

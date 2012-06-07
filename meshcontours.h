@@ -10,7 +10,7 @@ typedef std::vector< std::pair< OMMesh::Point, OMMesh::Point > > contour_t;
 class MeshContours
 {
 public:
-    const void renderContours();
+    void renderContours() const;
     
     void clearPrecomputedContours();
     void precomputeContoursAtValuesForMeshUsingVertexValues( const std::vector< double >& isovalues, const OMMesh& mesh, const std::vector< double >& vertex_values );
