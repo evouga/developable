@@ -2,9 +2,10 @@
 
 - Sum total curvature in vertices above/below the cutoff versus everywhere.
 - Stream lines for principal curvatures
-- Is there a problem with the curvature computation?
-
 
 == DONE ==
 
-+(buggy) Draw contour lines (2 or more) in the range [-cutoff,cutoff].
++ Draw contour lines (2 or more) in the range [-cutoff,cutoff].
++ Is there a problem with the curvature computation?
+    I don't think so, the mesh is just too irregular and structured. I've put in some smoothing that improves the noise.
+
