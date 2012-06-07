@@ -34,7 +34,8 @@ HEADERS += \
     yimage.h \
     mesh.h \
     controller.h \
-    meshcurvature.h
+    meshcurvature.h \
+    meshcontours.h
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
 

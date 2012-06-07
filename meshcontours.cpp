@@ -61,11 +61,10 @@ ContoursAtValuesForMeshUsingVertexValues(
         assert( vals_and_indices.size() == 3 );
         
         /// 2
-        pts.clear();
-        // I should reserve 2, but numerical precision may lead to 3.
-        pts.reserve(3);
         for( unsigned int i = 0; i < isovalues.size(); ++i )
         {
+            pts.clear();
+
             const double val = isovalues.at( i );
             
             for( int c = 0; c < 3; ++c )
