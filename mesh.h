@@ -20,6 +20,7 @@ public:
 
     bool loadMesh(const std::string &filename);
     OMMesh &getMesh() {return mesh_;}
+    const OMMesh &getMesh() const {return mesh_;}
     void render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatMap type, double cutoff);
 
     Eigen::Vector3d centroid();

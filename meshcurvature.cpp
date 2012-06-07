@@ -25,15 +25,22 @@ MeshCurvature::MeshCurvature(Mesh &mesh)
 
 void MeshCurvature::computeCurvatures(Mesh &mesh)
 {
+    vector<ShapeOperator> shapeOperators;
+    computeShapeOperators(mesh, shapeOperators);
+    vector<ShapeOperator> smoothedOperators;
+    smoothShapeOperators(mesh, shapeOperators, smoothedOperators);
+    shapeOperators = smoothedOperators;
+    smoothShapeOperators(mesh, shapeOperators, smoothedOperators);
     curvature_.clear();
-
-    for(int i=0; i<(int)mesh.getMesh().n_vertices(); i++)
+    for(int i=0; i<(int)smoothedOperators.size(); i++)
     {
-        curvature_.push_back(computeCurvature(mesh, i));
+        CurvatureInfo c;
+        computeCurvature(smoothedOperators[i], c);
+        curvature_.push_back(c);
     }
 }
 
-void MeshCurvature::computeFrame(const Eigen::Vector3d &normal, Eigen::Vector3d &u, Eigen::Vector3d &v)
+Frame::Frame(const Eigen::Vector3d &normal) : normal(normal)
 {
     Vector3d seed(0,0,0);
     if(fabs(normal[0]) < 0.5)
@@ -45,109 +52,13 @@ void MeshCurvature::computeFrame(const Eigen::Vector3d &normal, Eigen::Vector3d 
     v = normal.cross(u);
 }
 
-CurvatureInfo MeshCurvature::computeCurvature(Mesh &mesh, int vidx)
+void MeshCurvature::computeCurvature(const ShapeOperator &shapeOperator, CurvatureInfo &curvature)
 {
-    Vector3d oldnormal = mesh.vertexNormal(vidx);
-    Vector3d normal = oldnormal;
-    CurvatureInfo result;
-    estimateCurvature(mesh, vidx, normal, result);
-    int iters = 1;
-    while( (oldnormal-normal).norm() > 1e-8 )
-    {
-        oldnormal = normal;
-        estimateCurvature(mesh, vidx, normal, result);
-        iters++;
-    }
-    return result;
-}
-
-void MeshCurvature::estimateCurvature(Mesh &mesh, int vidx, Vector3d &normal, CurvatureInfo &curvature)
-{
-    Vector3d u, v;
-    computeFrame(normal, u, v);
-
-    set<int> twoneighbors;
-    twoneighbors.insert(vidx);
-    for(int i=0; i<2; i++)
-    {
-        set<int> toadd;
-        for(set<int>::iterator it = twoneighbors.begin(); it != twoneighbors.end(); ++it)
-        {
-            OMMesh::VertexHandle vh = mesh.getMesh().vertex_handle(*it);
-            for(OMMesh::VertexVertexIter vvi = mesh.getMesh().vv_iter(vh); vvi; ++vvi)
-            {
-                toadd.insert(vvi.handle().idx());
-            }
-        }
-        for(set<int>::iterator it = toadd.begin(); it != toadd.end(); ++it)
-            twoneighbors.insert(*it);
-    }
-
-    int numneighbors = twoneighbors.size();
-    curvature = CurvatureInfo();
-    if(numneighbors < 6)
-        return;
-
-    //a u^2 + b v^2 + c uv
-
-    MatrixXd Mat(numneighbors, 6);
-    VectorXd rhs(numneighbors);
-    OMMesh::Point centpt = mesh.getMesh().point(mesh.getMesh().vertex_handle(vidx));
-    int row=0;
-    for(set<int>::iterator it = twoneighbors.begin(); it != twoneighbors.end(); ++it)
-    {
-        OMMesh::Point adjpt = mesh.getMesh().point(mesh.getMesh().vertex_handle(*it));
-        Vector3d diff;
-        for(int i=0; i<3; i++)
-            diff[i] = adjpt[i]-centpt[i];
-        double uval = diff.dot(u);
-        double vval = diff.dot(v);
-        rhs[row] = diff.dot(normal);
-        Mat.coeffRef(row,0) = uval*uval;
-        Mat.coeffRef(row,1) = vval*vval;
-        Mat.coeffRef(row,2) = uval*vval;
-        Mat.coeffRef(row,3) = uval;
-        Mat.coeffRef(row,4) = vval;
-        Mat.coeffRef(row,5) = 1;
-        row++;
-    }
-    assert(row == numneighbors);
-    VectorXd nrhs = Mat.transpose()*rhs;
-    MatrixXd MTM = Mat.transpose()*Mat;
-    VectorXd coeffs = MTM.ldlt().solve(nrhs);
-
-    Vector3d newnormal = (normal - coeffs[4]*v - coeffs[3]*u)/sqrt(1+coeffs[3]*coeffs[3]+coeffs[4]*coeffs[4]);
-
-    double E = 1 + coeffs[3]*coeffs[3];
-    double F = coeffs[3]*coeffs[4];
-    double G = 1 + coeffs[4]*coeffs[4];
-
-    double fac = normal.dot(newnormal);
-    double L = 2*coeffs[0]*fac;
-    double M = coeffs[2]*fac;
-    double N = 2*coeffs[1]*fac;
-
-    double det = E*G-F*F;
-    if(fabs(det) < 1e-6)
-        return;
-
-    Matrix2d shape;
-    shape << F*M-G*L, F*L-E*M, F*N-G*M, F*M-E*N;
-    shape /= det;
-
-    Matrix2d g;
-    g << 1 + coeffs[4]*coeffs[4], -coeffs[3]*coeffs[4], -coeffs[3]*coeffs[4], 1 + coeffs[3]*coeffs[3];
-    g /= det;
-
-    shape = g*shape;
-
-    assert(fabs(shape.coeff(0,1)-shape.coeff(1,0)) < 1e-6);
-
-    SelfAdjointEigenSolver<Matrix2d> eigensolver(shape);
+    SelfAdjointEigenSolver<Matrix2d> eigensolver(shapeOperator.S);
     for(int i=0; i<2; i++)
     {
         curvature.principalCurvature[i] = eigensolver.eigenvalues()[i];
-        curvature.curvatureDir[i] = eigensolver.eigenvectors().coeffRef(0,i)*u + eigensolver.eigenvectors().coeffRef(1,i)*v;
+        curvature.curvatureDir[i] = eigensolver.eigenvectors().coeffRef(0,i)*shapeOperator.frame.u + eigensolver.eigenvectors().coeffRef(1,i)*shapeOperator.frame.v;
         curvature.curvatureDir[i].normalize();
     }
     if(fabs(curvature.principalCurvature[1]) < fabs(curvature.principalCurvature[0]))
@@ -155,7 +66,6 @@ void MeshCurvature::estimateCurvature(Mesh &mesh, int vidx, Vector3d &normal, Cu
         swap(curvature.principalCurvature[0],curvature.principalCurvature[1]);
         swap(curvature.curvatureDir[0],curvature.curvatureDir[1]);
     }
-    normal = newnormal;
 }
 
 void MeshCurvature::renderCurvatureDirs(Mesh &mesh)
@@ -198,4 +108,144 @@ double MeshCurvature::meanCurvature(int vidx)
 {
     assert(0 <= vidx && vidx < (int)curvature_.size());
     return 0.5*(curvature_[vidx].principalCurvature[0]+curvature_[vidx].principalCurvature[1]);
+}
+
+void MeshCurvature::computeShapeOperators(Mesh &mesh, vector<ShapeOperator> &operators)
+{
+    operators.clear();
+
+    for(int i=0; i<(int)mesh.getMesh().n_vertices(); i++)
+    {
+        operators.push_back(computeShapeOperator(mesh, i));
+    }
+}
+
+ShapeOperator MeshCurvature::computeShapeOperator(Mesh &mesh, int vidx)
+{
+    Vector3d oldnormal = mesh.vertexNormal(vidx);
+    Vector3d normal = oldnormal;
+    ShapeOperator result = estimateShapeOperator(mesh, vidx, normal);
+    int iters = 1;
+    while( (oldnormal-normal).norm() > 1e-8 )
+    {
+        oldnormal = normal;
+        result = estimateShapeOperator(mesh, vidx, normal);
+        iters++;
+    }
+    return result;
+}
+
+ShapeOperator MeshCurvature::estimateShapeOperator(Mesh &mesh, int vidx, Eigen::Vector3d &normal)
+{
+    Frame frame(normal);
+
+    set<int> twoneighbors;
+    twoneighbors.insert(vidx);
+    for(int i=0; i<2; i++)
+    {
+        set<int> toadd;
+        for(set<int>::iterator it = twoneighbors.begin(); it != twoneighbors.end(); ++it)
+        {
+            OMMesh::VertexHandle vh = mesh.getMesh().vertex_handle(*it);
+            for(OMMesh::VertexVertexIter vvi = mesh.getMesh().vv_iter(vh); vvi; ++vvi)
+            {
+                toadd.insert(vvi.handle().idx());
+            }
+        }
+        for(set<int>::iterator it = toadd.begin(); it != toadd.end(); ++it)
+            twoneighbors.insert(*it);
+    }
+
+    int numneighbors = twoneighbors.size();
+    if(numneighbors < 6)
+        return ShapeOperator(frame);
+
+    //a u^2 + b v^2 + c uv + d u + e v + f
+
+    MatrixXd Mat(numneighbors, 6);
+    VectorXd rhs(numneighbors);
+    OMMesh::Point centpt = mesh.getMesh().point(mesh.getMesh().vertex_handle(vidx));
+    int row=0;
+    for(set<int>::iterator it = twoneighbors.begin(); it != twoneighbors.end(); ++it)
+    {
+        OMMesh::Point adjpt = mesh.getMesh().point(mesh.getMesh().vertex_handle(*it));
+        Vector3d diff;
+        for(int i=0; i<3; i++)
+            diff[i] = adjpt[i]-centpt[i];
+        double uval = diff.dot(frame.u);
+        double vval = diff.dot(frame.v);
+        rhs[row] = diff.dot(normal);
+        Mat.coeffRef(row,0) = uval*uval;
+        Mat.coeffRef(row,1) = vval*vval;
+        Mat.coeffRef(row,2) = uval*vval;
+        Mat.coeffRef(row,3) = uval;
+        Mat.coeffRef(row,4) = vval;
+        Mat.coeffRef(row,5) = 1;
+        row++;
+    }
+    assert(row == numneighbors);
+    VectorXd nrhs = Mat.transpose()*rhs;
+    MatrixXd MTM = Mat.transpose()*Mat;
+    VectorXd coeffs = MTM.ldlt().solve(nrhs);
+
+    Vector3d newnormal = (normal - coeffs[4]*frame.v - coeffs[3]*frame.u)/sqrt(1+coeffs[3]*coeffs[3]+coeffs[4]*coeffs[4]);
+
+    double E = 1 + coeffs[3]*coeffs[3];
+    double F = coeffs[3]*coeffs[4];
+    double G = 1 + coeffs[4]*coeffs[4];
+
+    double fac = normal.dot(newnormal);
+    double L = 2*coeffs[0]*fac;
+    double M = coeffs[2]*fac;
+    double N = 2*coeffs[1]*fac;
+
+    double det = E*G-F*F;
+    if(fabs(det) < 1e-6)
+        return ShapeOperator(frame);
+
+    Matrix2d shapeOperator;
+    shapeOperator << F*M-G*L, F*L-E*M, F*N-G*M, F*M-E*N;
+    shapeOperator /= det;
+
+    Matrix2d g;
+    g << 1 + coeffs[4]*coeffs[4], -coeffs[3]*coeffs[4], -coeffs[3]*coeffs[4], 1 + coeffs[3]*coeffs[3];
+    g /= det;
+
+    shapeOperator = g*shapeOperator;
+
+    assert(fabs(shapeOperator.coeff(0,1)-shapeOperator.coeff(1,0)) < 1e-6);
+
+    normal = newnormal;
+
+    return ShapeOperator(frame, shapeOperator);
+}
+
+Matrix2d MeshCurvature::transportShapeOperator(const ShapeOperator &source, const ShapeOperator &dest)
+{
+    MatrixXd sourceM(3,2);
+    sourceM << source.frame.u, source.frame.v;
+
+    MatrixXd destM(3,2);
+    destM << dest.frame.u, dest.frame.v;
+
+    Matrix2d M = sourceM.transpose()*sourceM;
+    Matrix2d T = M.inverse() * sourceM.transpose()*destM;
+    return T.transpose()*source.S*T;
+}
+
+void MeshCurvature::smoothShapeOperators(const Mesh &m, const vector<ShapeOperator> &oldOperators, vector<ShapeOperator> &newOperators)
+{
+    newOperators.clear();
+    for(OMMesh::ConstVertexIter cvi = m.getMesh().vertices_begin(); cvi != m.getMesh().vertices_end(); ++cvi)
+    {
+        int denom = 1;
+        Matrix2d S = oldOperators[cvi.handle().idx()].S;
+        for(OMMesh::ConstVertexVertexIter cvvi = m.getMesh().cvv_iter(cvi.handle()); cvvi; ++cvvi)
+        {
+            S += transportShapeOperator(oldOperators[cvvi.handle().idx()], oldOperators[cvi.handle().idx()]);
+            denom++;
+        }
+        S /= denom;
+        newOperators.push_back(ShapeOperator(oldOperators[cvi.handle().idx()].frame, S));
+    }
 }

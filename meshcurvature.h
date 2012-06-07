@@ -6,6 +6,22 @@
 
 class Mesh;
 
+struct Frame
+{
+    Frame(const Eigen::Vector3d &normal);
+    Eigen::Vector3d normal;
+    Eigen::Vector3d u;
+    Eigen::Vector3d v;
+};
+
+struct ShapeOperator
+{
+    ShapeOperator(Frame frame, const Eigen::Matrix2d &S) : frame(frame), S(S) {}
+    ShapeOperator(Frame frame) : frame(frame) {S.setZero();}
+    Frame frame;
+    Eigen::Matrix2d S;
+};
+
 struct CurvatureInfo
 {
     CurvatureInfo();
@@ -23,12 +39,15 @@ public:
 
 private:
     std::vector<CurvatureInfo> curvature_;
-    void computeFrame(const Eigen::Vector3d &normal, Eigen::Vector3d &u, Eigen::Vector3d &v);
 
     void computeCurvatures(Mesh &mesh);
-    CurvatureInfo computeCurvature(Mesh &mesh, int vidx);
-    void estimateCurvature(Mesh &mesh, int vidx, Eigen::Vector3d &normal, CurvatureInfo &curvature);
+    void computeCurvature(const ShapeOperator &shapeOperator, CurvatureInfo &curvature);
+    void computeShapeOperators(Mesh &mesh, std::vector<ShapeOperator> &operators);
+    ShapeOperator computeShapeOperator(Mesh &mesh, int vidx);
+    ShapeOperator estimateShapeOperator(Mesh &mesh, int vidx, Eigen::Vector3d &normal);
 
+    Eigen::Matrix2d transportShapeOperator(const ShapeOperator &source, const ShapeOperator &dest);
+    void smoothShapeOperators(const Mesh &m, const std::vector<ShapeOperator> &oldOperators, std::vector<ShapeOperator> &newOperators);
 };
 
 #endif // GEOMETRY_H
