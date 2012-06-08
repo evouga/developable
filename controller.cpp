@@ -22,6 +22,9 @@ void Controller::renderMesh()
     bool smoothShade = mw_.smoothShade();
     Mesh::HeatMap type = mw_.getHeatMapType();
     double cutoff = mw_.curvatureCutoff();
+    pair<double,double> sqGaussCurvatures;
+    mc_.totalSquaredGaussianCurvature(m_,sqGaussCurvatures, cutoff);
+    mw_.setSqGaussianCurvatures(sqGaussCurvatures.first, sqGaussCurvatures.second);
     m_.render(mc_,showWireframe, smoothShade, type, cutoff);
     if(mw_.showRulings())
         mc_.renderCurvatureDirs(m_);

@@ -37,12 +37,19 @@ public:
     double gaussianCurvature(int vidx);
     double meanCurvature(int vidx);
 
+    void totalSquaredGaussianCurvature(const Mesh &mesh, std::pair<double, double> &values, double cutoff);
+
 private:
     std::vector<CurvatureInfo> curvature_;
+
+    double curCutoff_;
+    double aboveSqGaussCurvature_;
+    double belowSqGaussCurvature_;
 
     void computeCurvatures(Mesh &mesh);
     void computeCurvature(const ShapeOperator &shapeOperator, CurvatureInfo &curvature);
     void computeShapeOperators(Mesh &mesh, std::vector<ShapeOperator> &operators);
+    void recomputeSquaredGaussianCurvature(const Mesh &mesh, double cutoff);
     ShapeOperator computeShapeOperator(Mesh &mesh, int vidx);
     ShapeOperator estimateShapeOperator(Mesh &mesh, int vidx, Eigen::Vector3d &normal);
 

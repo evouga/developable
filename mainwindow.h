@@ -31,6 +31,8 @@ public:
     double curvatureCutoff() const;
     bool showRulings() const;
     bool showContours() const;
+
+    void setSqGaussianCurvatures(double below, double above);
     
 private slots:
     void on_actionExit_triggered();

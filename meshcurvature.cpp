@@ -249,3 +249,32 @@ void MeshCurvature::smoothShapeOperators(const Mesh &m, const vector<ShapeOperat
         newOperators.push_back(ShapeOperator(oldOperators[cvi.handle().idx()].frame, S));
     }
 }
+
+void MeshCurvature::recomputeSquaredGaussianCurvature(const Mesh &mesh, double cutoff)
+{
+    assert(curvature_.size() == mesh.getMesh().n_vertices());
+    double totabove = 0;
+    double totbelow = 0;
+    for(int i=0; i<(int)curvature_.size(); i++)
+    {
+        double cur = gaussianCurvature(i);
+        double area = mesh.areaOfInfluence(i);
+        if(fabs(cur) > cutoff)
+            totabove += area*cur*cur;
+        else
+            totbelow += area*cur*cur;
+    }
+    curCutoff_ = cutoff;
+    belowSqGaussCurvature_ = totbelow;
+    aboveSqGaussCurvature_ = totabove;
+}
+
+void MeshCurvature::totalSquaredGaussianCurvature(const Mesh &mesh, pair<double, double> &values, double cutoff)
+{
+    if(cutoff != curCutoff_)
+    {
+        recomputeSquaredGaussianCurvature(mesh, cutoff);
+    }
+    values.first = belowSqGaussCurvature_;
+    values.second = aboveSqGaussCurvature_;
+}

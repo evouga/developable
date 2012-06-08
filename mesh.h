@@ -26,8 +26,11 @@ public:
     Eigen::Vector3d centroid();
     double radius();
 
-    Eigen::Vector3d vertexNormal(int vidx);
-    double shortestAdjacentEdge(int vidx);
+    Eigen::Vector3d vertexNormal(int vidx) const;
+    double shortestAdjacentEdge(int vidx) const;
+
+    double areaOfInfluence(int vidx) const;
+    double faceArea(int fidx) const;
 
 private:
     OMMesh mesh_;

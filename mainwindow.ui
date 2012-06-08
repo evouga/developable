@@ -50,8 +50,8 @@
         <rect>
          <x>10</x>
          <y>10</y>
-         <width>192</width>
-         <height>312</height>
+         <width>220</width>
+         <height>361</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -293,15 +293,65 @@
             <string>0.1</string>
            </property>
           </widget>
-          <zorder>meanCurvatureButton</zorder>
-          <zorder>gaussianCurvatureButton</zorder>
-          <zorder>noneCurvatureButton</zorder>
-          <zorder>cutoffSlider</zorder>
-          <zorder>cutoffLabel</zorder>
-          <zorder>curvatureCutoff</zorder>
-          <zorder>renderingBox</zorder>
-          <zorder>renderingBox</zorder>
-          <zorder>wireframeCheckBox</zorder>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="sqauredGaussianBox">
+          <property name="title">
+           <string>Sq Gaussian Curvature</string>
+          </property>
+          <widget class="QLabel" name="aboveLabel">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>40</y>
+             <width>101</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Above cutoff:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="belowLabel">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>20</y>
+             <width>101</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Below cutoff:</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="belowSqGaussian">
+           <property name="geometry">
+            <rect>
+             <x>120</x>
+             <y>20</y>
+             <width>70</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>0.0</string>
+           </property>
+          </widget>
+          <widget class="QLabel" name="aboveSqGaussian">
+           <property name="geometry">
+            <rect>
+             <x>120</x>
+             <y>40</y>
+             <width>70</width>
+             <height>17</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>0.0</string>
+           </property>
+          </widget>
          </widget>
         </item>
        </layout>
@@ -316,7 +366,7 @@
      <x>0</x>
      <y>0</y>
      <width>1600</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuVViewer">

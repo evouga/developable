@@ -178,9 +178,9 @@ double Mesh::radius()
     return sqrt(maxradius);
 }
 
-Vector3d Mesh::vertexNormal(int vidx)
+Vector3d Mesh::vertexNormal(int vidx) const
 {
-    assert(0 <= vidx && vidx <= (int)mesh_.n_vertices());
+    assert(0 <= vidx && vidx < (int)mesh_.n_vertices());
     OMMesh::VertexHandle vh = mesh_.vertex_handle(vidx);
     OMMesh::Normal normal;
     mesh_.calc_vertex_normal_correct(vh, normal);
@@ -189,12 +189,12 @@ Vector3d Mesh::vertexNormal(int vidx)
     return result;
 }
 
-double Mesh::shortestAdjacentEdge(int vidx)
+double Mesh::shortestAdjacentEdge(int vidx) const
 {
-    assert(0 <= vidx && vidx <= (int)mesh_.n_vertices());
+    assert(0 <= vidx && vidx < (int)mesh_.n_vertices());
     OMMesh::VertexHandle vh = mesh_.vertex_handle(vidx);
     double mindist = std::numeric_limits<double>::infinity();
-    for(OMMesh::VertexEdgeIter vei = mesh_.ve_iter(vh); vei; ++vei)
+    for(OMMesh::ConstVertexEdgeIter vei = mesh_.cve_iter(vh); vei; ++vei)
     {
         double dist = mesh_.calc_edge_sqr_length(vei.handle());
         if(dist < mindist)
@@ -215,4 +215,35 @@ Vector3d Mesh::heatmap(double val, double max)
         val = 1.0 - std::min(val, max)/max;
         return Vector3d(1.0, val, val);
     }
+}
+
+double Mesh::areaOfInfluence(int vidx) const
+{
+    assert(0 <= vidx && vidx < (int)mesh_.n_vertices());
+    double result = 0;
+    OMMesh::VertexHandle vh = mesh_.vertex_handle(vidx);
+    for(OMMesh::ConstVertexFaceIter vfi = mesh_.cvf_iter(vh); vfi; ++vfi)
+    {
+        double area = faceArea(vfi.handle().idx());
+        result += 1.0/3.0 * area;
+    }
+    return result;
+}
+
+double Mesh::faceArea(int fidx) const
+{
+    assert(0 <= fidx && fidx < (int)mesh_.n_faces());
+    OMMesh::FaceHandle fh = mesh_.face_handle(fidx);
+    Vector3d points[3];
+    int i=0;
+    for(OMMesh::ConstFaceVertexIter fvi = mesh_.cfv_iter(fh); fvi; ++fvi,++i)
+    {
+        assert(i < 3);
+        OMMesh::Point pt = mesh_.point(fvi.handle());
+        for(int j=0; j<3; j++)
+            points[i][j] = pt[j];
+    }
+    Vector3d e1 = points[1]-points[0];
+    Vector3d e2 = points[2]-points[0];
+    return 0.5 * e1.cross(e2).norm();
 }

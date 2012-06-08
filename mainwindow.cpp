@@ -100,6 +100,14 @@ bool MainWindow::showContours() const
     return ui->contoursBox->isChecked();
 }
 
+void MainWindow::setSqGaussianCurvatures(double below, double above)
+{
+    ui->belowSqGaussian->setText(QString::number(below));
+    ui->aboveSqGaussian->setText(QString::number(above));
+}
+
+
+
 
 void MainWindow::on_actionExit_triggered()
 {
