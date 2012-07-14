@@ -61,6 +61,8 @@ private slots:
 
     void on_contoursSlider_valueChanged(int value);
 
+    void on_curvatureSpreadButton_clicked();
+
 private:
     void updateGL();
 

@@ -75,13 +75,13 @@ void MeshCurvature::renderCurvatureDirs(Mesh &mesh)
 
     glPolygonOffset(1.0, 1.0);
 
-    glLineWidth(1.0);
+    glLineWidth(2.0);
     glBegin(GL_LINES);
     assert(mesh.getMesh().n_vertices() == curvature_.size());
     for(int i=0; i<(int)curvature_.size(); i++)
     {
         {
-            glColor3f(1.0, 0.0, 0.0);
+            glColor3f(0.0, 0.0, 0.0);
             OMMesh::Point pt = mesh.getMesh().point(mesh.getMesh().vertex_handle(i));
 
             Vector3d ept(pt[0],pt[1],pt[2]);
@@ -108,6 +108,12 @@ double MeshCurvature::meanCurvature(int vidx)
 {
     assert(0 <= vidx && vidx < (int)curvature_.size());
     return 0.5*(curvature_[vidx].principalCurvature[0]+curvature_[vidx].principalCurvature[1]);
+}
+
+double MeshCurvature::curvatureSpread(int vidx)
+{
+    assert(0 <= vidx && vidx < (int)curvature_.size());
+    return fabs(fabs(curvature_[vidx].principalCurvature[0])-fabs(curvature_[vidx].principalCurvature[1]));
 }
 
 void MeshCurvature::computeShapeOperators(Mesh &mesh, vector<ShapeOperator> &operators)

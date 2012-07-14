@@ -84,6 +84,9 @@ void Controller::setNumContours( int num )
             case Mesh::HM_GAUSSIAN:
                 vertex_vals.push_back( mc_.gaussianCurvature( i ) );
                 break;
+            case Mesh::HM_SPREAD:
+                vertex_vals.push_back(mc_.curvatureSpread(i));
+                break;
             
             default:
                 assert(!"Shouldn't be here");

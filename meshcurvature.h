@@ -36,6 +36,7 @@ public:
     void renderCurvatureDirs(Mesh &mesh);
     double gaussianCurvature(int vidx);
     double meanCurvature(int vidx);
+    double curvatureSpread(int vidx);
 
     void totalSquaredGaussianCurvature(const Mesh &mesh, std::pair<double, double> &values, double cutoff);
 

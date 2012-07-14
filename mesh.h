@@ -13,7 +13,7 @@ class MeshCurvature;
 class Mesh
 {
 public:
-    enum HeatMap {HM_NONE, HM_MEAN, HM_GAUSSIAN};
+    enum HeatMap {HM_NONE, HM_MEAN, HM_GAUSSIAN, HM_SPREAD};
 
     Mesh();
     ~Mesh();

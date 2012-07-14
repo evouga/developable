@@ -69,6 +69,11 @@ void Mesh::render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatM
             double curvature = mc.meanCurvature(v.idx());
             color = heatmap(curvature, cutoff);
         }
+        else if(type == HM_SPREAD)
+        {
+            double curvature = mc.curvatureSpread(v.idx());
+            color = heatmap(curvature, cutoff);
+        }
 
         OMMesh::Point pt = mesh_.point(v);
         OMMesh::Point n;

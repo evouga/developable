@@ -77,6 +77,8 @@ Mesh::HeatMap MainWindow::getHeatMapType() const
         return Mesh::HM_MEAN;
     else if(ui->gaussianCurvatureButton->isChecked())
         return Mesh::HM_GAUSSIAN;
+    else if(ui->curvatureSpreadButton->isChecked())
+        return Mesh::HM_SPREAD;
     return Mesh::HM_NONE;
 }
 
@@ -189,5 +191,12 @@ void MainWindow::on_contoursSlider_valueChanged(int value)
     ui->numContours->setText(QString::number(value));
     assert( cont_ );
     cont_->setNumContours( value );
+    updateGL();
+}
+
+void MainWindow::on_curvatureSpreadButton_clicked()
+{
+    assert(cont_);
+    cont_->setNumContours(ui->contoursSlider->value());
     updateGL();
 }
