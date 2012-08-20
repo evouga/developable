@@ -2,8 +2,7 @@
 #include "mesh.h"
 #include <GL/glu.h>
 #include <Eigen/Dense>
-#include "meshcurvature.h"
-
+\
 using namespace std;
 using namespace Eigen;
 
@@ -22,7 +21,7 @@ bool Mesh::loadMesh(const string &filename)
     return OpenMesh::IO::read_mesh(mesh_, filename);
 }
 
-void Mesh::render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatMap type, double cutoff)
+void Mesh::render(bool showWireframe, bool smoothShade)
 {
 
     glEnable(GL_LIGHTING);
@@ -59,21 +58,6 @@ void Mesh::render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatM
     {
         OMMesh::VertexHandle v = mesh_.vertex_handle(i);
         Vector3d color(0.0, 186/255., 0.0);
-        if(type == HM_GAUSSIAN)
-        {
-            double curvature = mc.gaussianCurvature(v.idx());
-            color = heatmap(curvature, cutoff);
-        }
-        else if(type == HM_MEAN)
-        {
-            double curvature = mc.meanCurvature(v.idx());
-            color = heatmap(curvature, cutoff);
-        }
-        else if(type == HM_SPREAD)
-        {
-            double curvature = mc.curvatureSpread(v.idx());
-            color = heatmap(curvature, cutoff);
-        }
 
         OMMesh::Point pt = mesh_.point(v);
         OMMesh::Point n;
@@ -119,13 +103,6 @@ void Mesh::render(MeshCurvature &mc, bool showWireframe, bool smoothShade, HeatM
         }
         glEnd();
     }
-
-    /*glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    for(OMMesh::ConstVertexIter v = mesh_.vertices_begin(); v != mesh_.vertices_end(); ++v)
-    {
-        glColor3f(0,0,0);
-        drawSphere(v.handle().idx());
-    }*/
 }
 
 void Mesh::edgeEndpoints(OMMesh::EdgeHandle eh, OMMesh::Point &pt1, OMMesh::Point &pt2)
@@ -206,20 +183,6 @@ double Mesh::shortestAdjacentEdge(int vidx) const
             mindist = dist;
     }
     return sqrt(mindist);
-}
-
-Vector3d Mesh::heatmap(double val, double max)
-{
-    if(val < 0)
-    {
-        val = 1.0 - std::min(fabs(val), max)/max;
-        return Vector3d(val, val, 1.0);
-    }
-    else
-    {
-        val = 1.0 - std::min(val, max)/max;
-        return Vector3d(1.0, val, val);
-    }
 }
 
 double Mesh::areaOfInfluence(int vidx) const

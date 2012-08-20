@@ -21,8 +21,8 @@ SOURCES += main.cpp \
     yimage.cpp \
     mesh.cpp \
     controller.cpp \
-    meshcurvature.cpp \
-    meshcontours.cpp
+    developablemesh.cpp \
+    schwarzdialog.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -34,8 +34,8 @@ HEADERS += \
     yimage.h \
     mesh.h \
     controller.h \
-    meshcurvature.h \
-    meshcontours.h
+    developablemesh.h \
+    schwarzdialog.h
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
 
@@ -50,4 +50,14 @@ macx {
 QMAKE_CXXFLAGS += -g
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    schwarzdialog.ui
+
+
+
+
+
+
+
+
+

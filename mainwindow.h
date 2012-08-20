@@ -22,18 +22,13 @@ public:
     void setController(Controller &cont);
 
     std::string launchMeshOpenDialog();
+    void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m);
     void saveScreenshot();
     void showError(const std::string &error);
     void centerCamera();
     bool showWireframe() const;
     bool smoothShade() const;
-    Mesh::HeatMap getHeatMapType() const;
-    double curvatureCutoff() const;
-    bool showRulings() const;
-    bool showContours() const;
-
-    void setSqGaussianCurvatures(double below, double above);
-    
+\
 private slots:
     void on_actionExit_triggered();
 
@@ -47,21 +42,7 @@ private slots:
 
     void on_smoothShadeCheckBox_clicked();
 
-    void on_gaussianCurvatureButton_clicked();
-
-    void on_meanCurvatureButton_clicked();
-
-    void on_noneCurvatureButton_clicked();
-
-    void on_cutoffSlider_actionTriggered(int action);
-
-    void on_rulingsBox_clicked();
-
-    void on_contoursBox_clicked();
-
-    void on_contoursSlider_valueChanged(int value);
-
-    void on_curvatureSpreadButton_clicked();
+    void on_actionSchwarz_Lantern_triggered();
 
 private:
     void updateGL();

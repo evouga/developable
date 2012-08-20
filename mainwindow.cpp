@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QDir>
 #include <QDateTime>
+#include "schwarzdialog.h"
 
 using namespace std;
 
@@ -33,6 +34,14 @@ string MainWindow::launchMeshOpenDialog()
         tr("Open Mesh"), "", tr("Mesh Files (*.obj *.ply)")).toAscii());
 
     return filename;
+}
+
+void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m)
+{
+    SchwarzDialog sd(this);
+    sd.setDefaultParameters(r, h, n, m);
+    if(sd.exec() == QDialog::Accepted)
+        sd.getChosenParameters(r,h,n,m);
 }
 
 void MainWindow::showError(const string &error)
@@ -69,46 +78,10 @@ bool MainWindow::smoothShade() const
     return ui->smoothShadeCheckBox->isChecked();
 }
 
-Mesh::HeatMap MainWindow::getHeatMapType() const
-{
-    if(ui->noneCurvatureButton->isChecked())
-        return Mesh::HM_NONE;
-    else if(ui->meanCurvatureButton->isChecked())
-        return Mesh::HM_MEAN;
-    else if(ui->gaussianCurvatureButton->isChecked())
-        return Mesh::HM_GAUSSIAN;
-    else if(ui->curvatureSpreadButton->isChecked())
-        return Mesh::HM_SPREAD;
-    return Mesh::HM_NONE;
-}
-
 void MainWindow::updateGL()
 {
     ui->GLwidget->updateGL();
 }
-
-double MainWindow::curvatureCutoff() const
-{
-    return ui->cutoffSlider->value()*0.001;
-}
-
-bool MainWindow::showRulings() const
-{
-    return ui->rulingsBox->isChecked();
-}
-
-bool MainWindow::showContours() const
-{
-    return ui->contoursBox->isChecked();
-}
-
-void MainWindow::setSqGaussianCurvatures(double below, double above)
-{
-    ui->belowSqGaussian->setText(QString::number(below));
-    ui->aboveSqGaussian->setText(QString::number(above));
-}
-
-
 
 
 void MainWindow::on_actionExit_triggered()
@@ -145,58 +118,8 @@ void MainWindow::on_smoothShadeCheckBox_clicked()
     updateGL();
 }
 
-void MainWindow::on_gaussianCurvatureButton_clicked()
+void MainWindow::on_actionSchwarz_Lantern_triggered()
 {
-    assert( cont_ );
-    cont_->setNumContours( ui->contoursSlider->value() );
-    updateGL();
-}
-
-void MainWindow::on_meanCurvatureButton_clicked()
-{
-    assert( cont_ );
-    {
-        cont_->setNumContours( ui->contoursSlider->value() );
-    }
-    updateGL();
-}
-
-void MainWindow::on_noneCurvatureButton_clicked()
-{
-    assert( cont_ );
-    cont_->setNumContours( ui->contoursSlider->value() );
-    updateGL();
-}
-
-void MainWindow::on_cutoffSlider_actionTriggered(int )
-{
-    ui->curvatureCutoff->setText(QString::number(ui->cutoffSlider->value()*0.001));
-    if( ui->contoursBox->isChecked() ) cont_->setNumContours( ui->contoursSlider->value() );
-    updateGL();
-}
-
-void MainWindow::on_rulingsBox_clicked()
-{
-    updateGL();
-}
-
-void MainWindow::on_contoursBox_clicked()
-{
-    if( ui->contoursBox->isChecked() ) cont_->setNumContours( ui->contoursSlider->value() );
-    updateGL();
-}
-
-void MainWindow::on_contoursSlider_valueChanged(int value)
-{
-    ui->numContours->setText(QString::number(value));
-    assert( cont_ );
-    cont_->setNumContours( value );
-    updateGL();
-}
-
-void MainWindow::on_curvatureSpreadButton_clicked()
-{
-    assert(cont_);
-    cont_->setNumContours(ui->contoursSlider->value());
+    cont_->newSchwarzLantern();
     updateGL();
 }

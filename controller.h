@@ -1,10 +1,8 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include "mesh.h"
+#include "developablemesh.h"
 #include <Eigen/Core>
-#include "meshcurvature.h"
-#include "meshcontours.h"
 
 class MainWindow;
 
@@ -17,13 +15,11 @@ public:
     void quit();
     void loadOBJ();
     void getSceneBounds(Eigen::Vector3d &center, double &radius);
-    void setNumContours( int num );
+    void newSchwarzLantern();
 
 private:
     MainWindow &mw_;
-    Mesh m_;
-    MeshCurvature mc_;
-    MeshContours mcontours_;
+    DevelopableMesh m_;
 };
 
 #endif // CONTROLLER_H
