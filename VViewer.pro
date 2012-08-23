@@ -39,7 +39,7 @@ HEADERS += \
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore
 
-INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src
+INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework

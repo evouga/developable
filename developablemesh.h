@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 #include "mesh.h"
+#include <Eigen/Sparse>
+#include <fadiff.h>
 
 struct BoundaryCurve
 {
@@ -31,6 +33,15 @@ private:
     void identifyBoundaries();
     void calculateSurfaceArea();
     Eigen::Vector3d point2Vector(OMMesh::Point pt);
+
+    void buildObjective(double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf);
+    void buildConstraints(Eigen::VectorXd &g, Eigen::SparseMatrix<double> &Dg, const std::vector<double> &targetHeights);
+    void projectOntoConstraints(const Eigen::VectorXd &v, const Eigen::SparseMatrix<double> &Dg, Eigen::VectorXd &result);
+
+    fadbad::F<double> norm(fadbad::F<double> *v);
+    void cross(fadbad::F<double> *v1, fadbad::F<double> *v2, fadbad::F<double> *result);
+    void normalize(fadbad::F<double> *v);
+    fadbad::F<double> dot(fadbad::F<double> *v1, fadbad::F<double> *v2);
 };
 
 #endif // DEVELOPABLEMESH_H

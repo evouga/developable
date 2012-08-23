@@ -137,7 +137,7 @@ void MainWindow::on_optimizeButton_clicked()
     updateGL();
 }
 
-void MainWindow::on_heightSlider_actionTriggered(int action)
+void MainWindow::on_heightSlider_actionTriggered(int )
 {
     int position = ui->heightSlider->value();
     double height = position/100.0;
