@@ -83,6 +83,13 @@ void MainWindow::updateGL()
     ui->GLwidget->updateGL();
 }
 
+void MainWindow::setCylinderHeight(double height)
+{
+    ui->heightSlider->setMaximum(100*height);
+    ui->heightSlider->setValue(100*height);
+    repaint();
+}
+
 
 void MainWindow::on_actionExit_triggered()
 {
@@ -121,5 +128,19 @@ void MainWindow::on_smoothShadeCheckBox_clicked()
 void MainWindow::on_actionSchwarz_Lantern_triggered()
 {
     cont_->newSchwarzLantern();
+    updateGL();
+}
+
+void MainWindow::on_optimizeButton_clicked()
+{
+    cont_->deformLantern();
+    updateGL();
+}
+
+void MainWindow::on_heightSlider_actionTriggered(int action)
+{
+    int position = ui->heightSlider->value();
+    double height = position/100.0;
+    cont_->updateLanternHeight(height);
     updateGL();
 }

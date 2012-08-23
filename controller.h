@@ -16,6 +16,8 @@ public:
     void loadOBJ();
     void getSceneBounds(Eigen::Vector3d &center, double &radius);
     void newSchwarzLantern();
+    void deformLantern();
+    void updateLanternHeight(double newheight);
 
 private:
     MainWindow &mw_;
