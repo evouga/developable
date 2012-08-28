@@ -24,6 +24,7 @@ public:
     std::string launchMeshOpenDialog();
     void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m);
     void saveScreenshot();
+    void saveScreenshot(const std::string &filename);
     void showError(const std::string &error);
     void centerCamera();
     bool showWireframe() const;

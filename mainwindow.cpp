@@ -59,13 +59,18 @@ void MainWindow::centerCamera()
 
 void MainWindow::saveScreenshot()
 {
-    QString curdir = QDir::currentPath();
-
     QDateTime dateTime = QDateTime::currentDateTime();
     QString dateTimeString = dateTime.toString("dd_MM_yy_hh_mm_ss_zzz");
-    string filename = string(curdir.toAscii()) + "/screen_" + string(dateTimeString.toAscii()) + ".png";
-    cout << "path " << filename << endl;
-    ui->GLwidget->saveScreenshot(filename);
+    string filename = "screen_" + string(dateTimeString.toAscii()) + ".png";
+    saveScreenshot(filename);
+}
+
+void MainWindow::saveScreenshot(const string &filename)
+{
+    updateGL();
+    QString curdir = QDir::currentPath();
+    string fullname = string(curdir.toAscii()) + "/output/" + filename;
+    ui->GLwidget->saveScreenshot(fullname);
 }
 
 bool MainWindow::showWireframe() const

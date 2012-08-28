@@ -24,7 +24,7 @@ public:
 
     void getBoundaryHeights(std::vector<double> &heights);
 
-    void deformLantern(const std::vector<double> &newheights);
+    void deformLantern(const std::vector<double> &newheights, int maxiters);
 
 private:
     std::vector<BoundaryCurve> boundaries_;
@@ -34,14 +34,52 @@ private:
     void calculateSurfaceArea();
     Eigen::Vector3d point2Vector(OMMesh::Point pt);
 
-    void buildObjective(double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf);
-    void buildConstraints(Eigen::VectorXd &g, Eigen::SparseMatrix<double> &Dg, const std::vector<double> &targetHeights);
+    void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf);
+    void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, Eigen::SparseMatrix<double> &Dg, const std::vector<double> &targetHeights);
     void projectOntoConstraints(const Eigen::VectorXd &v, const Eigen::SparseMatrix<double> &Dg, Eigen::VectorXd &result);
+    void projectPositionsOntoConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &result, const std::vector<double> &targetHeights);
 
-    fadbad::F<double> norm(fadbad::F<double> *v);
-    void cross(fadbad::F<double> *v1, fadbad::F<double> *v2, fadbad::F<double> *result);
-    void normalize(fadbad::F<double> *v);
-    fadbad::F<double> dot(fadbad::F<double> *v1, fadbad::F<double> *v2);
+    double lineSearch(const Eigen::VectorXd &q, const Eigen::VectorXd &dq, const Eigen::VectorXd &lambda, const std::vector<double> &targetHeights);
+
+    template<class T> static T norm(T *v);
+    template<class T> static void cross(T *v1, T *v2, T *result);
+    template<class T> static void normalize(T *v);
+    template<class T> static T dot(T *v1, T *v2);
 };
+
+
+
+
+template<class T>
+void DevelopableMesh::cross(T *v1, T *v2, T *result)
+{
+    result[0] = v1[1]*v2[2] - v1[2]*v2[1];
+    result[1] = v1[2]*v2[0] - v1[0]*v2[2];
+    result[2] = v1[0]*v2[1] - v1[1]*v2[0];
+}
+
+template<class T> T DevelopableMesh::norm(T *v)
+{
+    T result = 0;
+    for(int i=0; i<3; i++)
+        result += v[i]*v[i];
+    return sqrt(result);
+}
+
+template<class T> void DevelopableMesh::normalize(T *v)
+{
+    T n = norm(v);
+    for(int i=0; i<3; i++)
+        v[i] /= n;
+}
+
+template<class T> T DevelopableMesh::dot(T *v1, T *v2)
+{
+    T result = 0;
+    for(int i=0; i<3; i++)
+        result += v1[i]*v2[i];
+    return result;
+}
+
 
 #endif // DEVELOPABLEMESH_H

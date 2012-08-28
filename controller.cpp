@@ -3,6 +3,8 @@
 #include "mesh.h"
 #include <string>
 #include <cassert>
+#include <iomanip>
+#include <sstream>
 
 using namespace std;
 using namespace Eigen;
@@ -55,8 +57,13 @@ void Controller::deformLantern()
 {
     vector<double> heights;
     m_.getBoundaryHeights(heights);
-    heights[1] *= 0.9;
-    m_.deformLantern(heights);
+    for(int i=0; i<1000; i++)
+    {
+        m_.deformLantern(heights,1);
+        stringstream ss;
+        ss << "frame_" << setfill('0') << setw(6) << i << ".png";
+        mw_.saveScreenshot(ss.str());
+    }
 }
 
 void Controller::updateLanternHeight(double newheight)
@@ -66,6 +73,6 @@ void Controller::updateLanternHeight(double newheight)
     if(heights.size() == 2)
     {
         heights[1] = newheight;
-        m_.deformLantern(heights);
+        m_.deformLantern(heights,1);
     }
 }

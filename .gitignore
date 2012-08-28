@@ -1,4 +1,5 @@
 *.o
+*.png
 /ui_mainwindow.h
 /moc_glwidget.cpp
 /moc_mainwindow.cpp

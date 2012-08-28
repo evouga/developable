@@ -151,7 +151,7 @@ void DevelopableMesh::getBoundaryHeights(std::vector<double> &heights)
         heights.push_back(boundaries_[i].height);
 }
 
-void DevelopableMesh::deformLantern(const std::vector<double> &newheights)
+void DevelopableMesh::deformLantern(const std::vector<double> &newheights, int maxiters)
 {
     assert(newheights.size() == boundaries_.size());
     for(int i=0; i<(int)boundaries_.size(); i++)
@@ -170,24 +170,43 @@ void DevelopableMesh::deformLantern(const std::vector<double> &newheights)
 
     int numdofs = 3*numverts;
 
-    for(int iter = 0; iter<100; iter++)
+    VectorXd q(numdofs);
+    for(int i=0; i<numverts; i++)
+    {
+        OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(i));
+        for(int k=0; k<3; k++)
+            q[3*i+k] = pt[k];
+    }
+
+
+    for(int iter = 0; iter<maxiters; iter++)
     {
         // build the bending energy and Jacobian
 
         SparseMatrix<double> Dg;
         VectorXd g;
-        buildConstraints(g, Dg, newheights);
+        buildConstraints(q, g, Dg, newheights);
         int numconstraints = g.size();
 
         double f;
         VectorXd Df;
         SparseMatrix<double> Hf;
-        buildObjective(f, Df, Hf);
+        buildObjective(q, f, Df, Hf);
 
 
+//        cout << Df.transpose() << endl;
         VectorXd projV;
         projectOntoConstraints(Df, Dg, projV);
-        cout << projV.transpose() << endl;
+        cout << "Iter " << iter << ": proj Df: " << projV.norm() << " g: " << g.norm() << " f: " << f;
+
+        if(projV.norm() < 1e-6 && g.norm() < 1e-6)
+        {
+            cout << endl << endl << endl;
+            break;
+        }
+
+//        MatrixXd wtf(Hf);
+//        cout << wtf << endl;
 
         vector<T> finalcoeffs;
 
@@ -199,7 +218,7 @@ void DevelopableMesh::deformLantern(const std::vector<double> &newheights)
                 {
                     double coeff = Hf.coeffRef(i,j);
                     if(i == j)
-                        coeff += 0.0;
+                        coeff += 0.001;
                     finalcoeffs.push_back(T(i, j, coeff));
                 }
             }
@@ -216,33 +235,33 @@ void DevelopableMesh::deformLantern(const std::vector<double> &newheights)
         VectorXd rhs1 = -Df;
         VectorXd rhs2 = -g;
         VectorXd rhs(numdofs+numconstraints);
-        rhs.setZero();
-        for(int i=0; i<numdofs; i++)
-            rhs[i] = rhs1[i];
-        for(int i=0; i<numconstraints; i++)
-            rhs[i+numdofs] = rhs2[i];
+        rhs.segment(0, numdofs) = rhs1;
+        rhs.segment(numdofs, numconstraints) = rhs2;
 
         SparseMatrix<double> M(numdofs+numconstraints, numdofs+numconstraints);
         M.setFromTriplets(finalcoeffs.begin(), finalcoeffs.end());
         MatrixXd dense(M);
         MatrixXd MTM(dense.transpose()*dense);
         VectorXd result = MTM.ldlt().solve(M.transpose()*rhs);
-        VectorXd dq(numdofs);
-        for(int i=0; i<numdofs; i++)
-            dq[i] = result[i];
-        VectorXd lambda(numconstraints);
-        for(int i=0; i<numconstraints; i++)
-            lambda[i] = result[i+numdofs];
+        VectorXd dq = result.segment(0, numdofs);
+        VectorXd lambda = result.segment(numdofs, numconstraints);
 
         double residual = (M*result-rhs).norm();
 
-        cout << "Iter " << iter << " residual " << residual << " E: " << f << " g: " << g.norm() << " lambda: " << lambda.norm() << endl;
-        // Apply delta
-        for(int i=0; i<numverts; i++)
+        cout << " gradient: " << Df.dot(projV) << " lambda: " << lambda.norm() << endl;
+        if(Df.dot(projV) > 0)
         {
-            for(int k=0; k<3; k++)
-                mesh_.point(mesh_.vertex_handle(i))[k] += dq[3*i+k];
+            double alpha = lineSearch(q, -projV, lambda, newheights);
+            q -= alpha*projV;
         }
+        projectPositionsOntoConstraints(q, q, newheights);
+
+    }
+
+    for(int i=0; i<numverts; i++)
+    {
+        for(int k=0; k<3; k++)
+            mesh_.point(mesh_.vertex_handle(i))[k] = q[3*i+k];
     }
 }
 
@@ -254,7 +273,7 @@ Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
     return result;
 }
 
-void DevelopableMesh::buildConstraints(VectorXd &g, SparseMatrix<double> &Dg, const vector<double> &targetHeights)
+void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMatrix<double> &Dg, const vector<double> &targetHeights)
 {
     int numverts = mesh_.n_vertices();
     int numdofs = 3*numverts;
@@ -287,27 +306,40 @@ void DevelopableMesh::buildConstraints(VectorXd &g, SparseMatrix<double> &Dg, co
         OMMesh::VertexHandle vh = mesh_.vertex_handle(i);
         bool bdry = mesh_.is_boundary(vh);
 
-        double deficit = 0;
+        F<double> deficit = 0;
 
         int valence = mesh_.valence(vh);
 
         vector<int> vidxs;
-        vector<Vector3d> grads;
         for(int j=0; j<=valence; j++)
         {
             vidxs.push_back(0);
-            grads.push_back(Vector3d(0,0,0));
         }
 
         vidxs[valence] = i;
+        F<double> centpt[3];
+        for(int k=0; k<3; k++)
+        {
+            centpt[k] = q[3*vh.idx()+k];
+            centpt[k].diff(3*valence+k, 3*(valence+1));
+        }
 
         OMMesh::VertexOHalfedgeIter voh = mesh_.voh_iter(vh);
         for(int j=0; j<valence; j++)
         {
             OMMesh::VertexHandle tov = mesh_.to_vertex_handle(voh);
             vidxs[j] = tov.idx();
-            OMMesh::Point e1pt = mesh_.point(tov) - mesh_.point(vh);
-            Vector3d e1(e1pt[0], e1pt[1], e1pt[2]);
+            F<double> tovpt[3];
+            for(int k=0; k<3; k++)
+            {
+                tovpt[k] = q[3*tov.idx()+k];
+                tovpt[k].diff(3*j+k, 3*(valence+1));
+            }
+            F<double> e1[3];
+            for(int k=0; k<3; k++)
+            {
+                e1[k] = tovpt[k] - centpt[k];
+            }
 
             ++voh;
             if(!voh)
@@ -318,76 +350,91 @@ void DevelopableMesh::buildConstraints(VectorXd &g, SparseMatrix<double> &Dg, co
                 continue;
 
 
-            OMMesh::Point e2pt = mesh_.point(mesh_.to_vertex_handle(voh)) - mesh_.point(vh);
-            Vector3d e2(e2pt[0], e2pt[1], e2pt[2]);
-            double e1norm = e1.norm();
-            double e2norm = e2.norm();
-            double theta = acos( e1.dot(e2) / e1norm / e2norm );
+            //OMMesh::Point e2pt = mesh_.point(mesh_.to_vertex_handle(voh)) - mesh_.point(vh);
+            F<double> tovpt2[3];
+            for(int k=0; k<3; k++)
+            {
+                tovpt2[k] = q[3*mesh_.to_vertex_handle(voh).idx()+k];
+                tovpt2[k].diff( 3*((j+1)%valence) + k, 3*(valence+1) );
+            }
+            F<double> e2[3];
+            for(int k=0; k<3; k++)
+            {
+                e2[k] = tovpt2[k]-centpt[k];
+            }
+            F<double> e1norm = norm(e1);
+            F<double> e2norm = norm(e2);
+            F<double> theta = acos(dot(e1,e2) / e1norm / e2norm );
             deficit += theta;
-
-            Vector3d de1 = (e1.dot(e2)/e1norm * e1/e1norm - e2) / sqrt( e1norm*e1norm * e2norm*e2norm - e1.dot(e2)*e1.dot(e2));
-            Vector3d de2 = (e1.dot(e2)/e2norm * e2/e2norm - e1) / sqrt( e1norm*e1norm * e2norm*e2norm - e1.dot(e2)*e1.dot(e2));
-            grads[j] += de1;
-            grads[(j+1)%valence] += de2;
-            grads[valence] += -de1 - de2;
         }
         deficit -= (bdry ? PI : 2*PI);
-        g[row] = deficit;
+        g[row] = deficit.val();
 
         for(int j=0; j<=valence; j++)
         {
             for(int k=0; k<3; k++)
             {
-                coefficients.push_back(T(row, 3*vidxs[j]+k, grads[j][k]));
+                coefficients.push_back(T(row, 3*vidxs[j]+k, deficit.d(3*j+k)));
             }
         }
         row++;
     }
     assert(row == numverts);
 
-    // boundary arc lengths are constant
+    // boundary arc length is constant
     for(int i=0; i<(int)boundaries_.size(); i++)
     {
-        double len = 0;
+        F<double> len = 0;
 
-        map<int, Vector3d> grads;
-        int numedges = boundaries_[i].edges.size();
+        int numedges = boundaries_[0].edges.size();
+        map<int, int> vertids;
+        int curid=0;
 
         for(int j=0; j<numedges; j++)
         {
-            double curlen = mesh_.calc_edge_length(mesh_.edge_handle(boundaries_[i].edges[j]));
-            len += curlen;
-            OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(mesh_.edge_handle(boundaries_[i].edges[j]), 0);
+            //double curlen = mesh_.calc_edge_length(mesh_.edge_handle(boundaries_[i].edges[j]));
+            //len += curlen;
+            OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(mesh_.edge_handle(boundaries_[0].edges[j]), 0);
             int idx1 = mesh_.to_vertex_handle(heh).idx();
             int idx2 = mesh_.from_vertex_handle(heh).idx();
-            OMMesh::Point pt1pt = mesh_.point(mesh_.vertex_handle(idx1));
-            OMMesh::Point pt2pt = mesh_.point(mesh_.vertex_handle(idx2));
-            Vector3d pt1(pt1pt[0], pt1pt[1], pt1pt[2]);
-            Vector3d pt2(pt2pt[0], pt2pt[1], pt2pt[2]);
+            if(vertids.find(idx1) == vertids.end())
+                vertids[idx1] = curid++;
+            if(vertids.find(idx2) == vertids.end())
+                vertids[idx2] = curid++;
 
-            if(grads.find(idx1) == grads.end())
-                grads[idx1] = (pt1-pt2)/curlen;
-            else
-                grads[idx1] += (pt1-pt2)/curlen;
-            if(grads.find(idx2) == grads.end())
-                grads[idx2] = -(pt1-pt2)/curlen;
-            else
-                grads[idx2] += -(pt1-pt2)/curlen;
+            F<double> pt1[3];
+            F<double> pt2[3];
+            for(int k=0; k<3; k++)
+            {
+                pt1[k] = q[3*idx1+k];
+                pt1[k].diff(3*vertids[idx1]+k, 3*numedges);
+                pt2[k] = q[3*idx2+k];
+                pt2[k].diff(3*vertids[idx2]+k, 3*numedges);
+            }
+
+            F<double> edge[3];
+            for(int k=0; k<3; k++)
+            {
+                edge[k] = pt2[k] - pt1[k];
+            }
+
+            len += norm(edge);
+
         }
 
-        len -= boundaries_[i].arclength;
-        g[row] = len;
+        len -= boundaries_[0].arclength;
+        g[row] = len.val();
 
-        for(map<int, Vector3d>::iterator it = grads.begin(); it != grads.end(); ++it)
+        for(map<int,int>::iterator it = vertids.begin(); it != vertids.end(); ++it)
         {
             for(int k=0; k<3; k++)
-                coefficients.push_back(T(row, 3*it->first+k, it->second[k]));
+                coefficients.push_back(T(row, 3*it->first+k, len.d(3*it->second+k)));
         }
 
         row++;
     }
 
-    assert(row == numverts + (int)boundaries_.size());
+    assert(row == numverts + boundaries_.size());
 
     // boundary vertices have fixed height
     for(int i=0; i<(int)boundaries_.size(); i++)
@@ -401,33 +448,41 @@ void DevelopableMesh::buildConstraints(VectorXd &g, SparseMatrix<double> &Dg, co
         }
         for(set<int>::iterator it = bdverts.begin(); it != bdverts.end(); ++it)
         {
-            g[row] = mesh_.point(mesh_.vertex_handle(*it))[2] - targetHeights[i];
+            g[row] = q[3* *it+2] - targetHeights[i];
             coefficients.push_back(T(row, 3* *it + 2, 1.0));
             row++;
         }
     }
 
-    assert(row == numverts + (int)boundaries_.size() + boundaryverts);
+    assert(row == numverts + boundaries_.size() + boundaryverts);
 
     // total area is constant
-    double area = 0;
-
-    vector<Vector3d> gradA;
-    for(int i=0; i<numverts; i++)
-        gradA.push_back(Vector3d(0,0,0));
+    F<double> area = 0;
 
     for(int i=0; i<numverts; i++)
     {
         OMMesh::VertexHandle vh = mesh_.vertex_handle(i);
-
+        F<double> centpt[3];
+        for(int k=0; k<3; k++)
+        {
+            centpt[k] = q[3*vh.idx()+k];
+            centpt[k].diff(3*i+k, 3*numverts);
+        }
         int valence = mesh_.valence(vh);
         OMMesh::VertexOHalfedgeIter voh = mesh_.voh_iter(vh);
         for(int j=0; j<valence; j++)
         {
             OMMesh::VertexHandle tov = mesh_.to_vertex_handle(voh);
             int idx1 = tov.idx();
-            OMMesh::Point e1pt = mesh_.point(tov) - mesh_.point(vh);
-            Vector3d e1(e1pt[0], e1pt[1], e1pt[2]);
+            F<double> tovpt[3];
+            for(int k=0; k<3; k++)
+            {
+                tovpt[k] = q[3*tov.idx() + k];
+                tovpt[k].diff(3*idx1+k, 3*numverts);
+            }
+            F<double> e1[3];
+            for(int k=0; k<3; k++)
+                e1[k] = tovpt[k]-centpt[k];
 
             ++voh;
             if(!voh)
@@ -438,25 +493,29 @@ void DevelopableMesh::buildConstraints(VectorXd &g, SparseMatrix<double> &Dg, co
 
             tov = mesh_.to_vertex_handle(voh);
             int idx2 = tov.idx();
-            OMMesh::Point e2pt = mesh_.point(tov) - mesh_.point(vh);
-            Vector3d e2(e2pt[0], e2pt[1], e2pt[2]);
-            area += 0.5/3.0 * (e1.cross(e2)).norm();
+            F<double> tovpt2[3];
+            for(int k=0; k<3; k++)
+            {
+                tovpt2[k] = q[3*tov.idx()+k];
+                tovpt2[k].diff(3*idx2+k, 3*numverts);
+            }
+            F<double> e2[3];
+            for(int k=0; k<3; k++)
+                e2[k] = tovpt2[k]-centpt[k];
 
-            Vector3d de1 = -0.5/3.0 * (e1.cross(e2)).cross(e2)/(e1.cross(e2)).norm();
-            Vector3d de2 = 0.5/3.0 * (e1.cross(e2)).cross(e1)/(e1.cross(e2)).norm();
-            gradA[idx1] += de1;
-            gradA[idx2] += de2;
-            gradA[i] += -de1-de2;
+            F<double> cr[3];
+            cross(e1,e2,cr);
+            area += 0.5/3.0 * norm(cr);
         }
     }
 
     area -= surfacearea_;
-    g[row] = area;
+    g[row] = area.val();
 
     for(int i=0; i<numverts; i++)
     {
         for(int k=0; k<3; k++)
-            coefficients.push_back(T(row, 3*i+k, gradA[i][k]));
+            coefficients.push_back(T(row, 3*i+k, area.d(3*i+k)));
     }
     row++;
 
@@ -473,16 +532,43 @@ void DevelopableMesh::projectOntoConstraints(const Eigen::VectorXd &v, const Eig
     // Min 0.5 || v-v_0 ||^2 s.t. Dg v = 0
 
     VectorXd rhs = Dg*v;
-    SparseMatrix<double> DgDgT(Dg*Dg.transpose());
-    SimplicialLDLT<SparseMatrix<double> > solver(DgDgT);
-    VectorXd lambda = solver.solve(rhs);
-    double residual = (DgDgT*lambda-rhs).norm();
-    cout << "Projection residual " << residual << endl;
+
+    //cout << v.norm() << " " << rhs.norm() << endl;
+
+    MatrixXd dense(Dg.transpose());
+    JacobiSVD<MatrixXd> svd(dense, ComputeFullU | ComputeFullV);
+    //cout << svd.singularValues().transpose() << endl;
+    //VectorXd lambda = svd.solve(v);
+    VectorXd tmp = svd.matrixU().transpose()*v;
+    //cout << "got temp" << endl;
+    cout << "Largest SV: " << svd.singularValues()[0] << "   Smallest SV: " << svd.singularValues()[rhs.size()-1] << endl;
+    VectorXd scaled(rhs.size());
+    for(int i=0; i<rhs.size(); i++)
+    {
+        double val = svd.singularValues()[i];
+        if(val < 1e-6)
+            scaled[i] = 0;
+        else
+            scaled[i] = tmp[i]/val;
+    }
+    //cout << "rescaled" << endl;
+    VectorXd lambda = svd.matrixV()*scaled;
+    //cout << "got lambda" << endl;
+    /*SparseMatrix<double> temp(Dg*Dg.transpose());
+    MatrixXd dense(temp);
+    VectorXd lambda = dense.ldlt().solve(Dg*v);*/
+
+
 
     result = v - Dg.transpose()*lambda;
+    double residual = (Dg*result).norm();
+
+    //cout << lambda.norm() << " " << result.norm() << " . " << residual << " " << result.dot(v) << endl;
+
+    //assert(residual < 1e-6);
 }
 
-void DevelopableMesh::buildObjective(double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf)
+void DevelopableMesh::buildObjective(const VectorXd &q, double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf)
 {
     int numverts = mesh_.n_vertices();
     int numdofs = 3*numverts;
@@ -499,43 +585,30 @@ void DevelopableMesh::buildObjective(double &f, Eigen::VectorXd &Df, Eigen::Spar
         if(mesh_.is_boundary(mesh_.edge_handle(i)))
             continue;
 
-        F<double> Ff = 0;
+        F<F<double> > Ff = 0;
 
         OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(mesh_.edge_handle(i), 0);
         int inds[4];
-        F<double> x[4][3];
+        F<F<double> > x[4][3];
+        F<double> xx[4][3];
 
         inds[0] = mesh_.from_vertex_handle(heh).idx();
-        for(int k=0; k<3;k++)
-        {
-            x[0][k] = mesh_.point(mesh_.from_vertex_handle(heh))[k];
-            x[0][k].diff(3*0+k, 12);
-        }
-
         inds[1] = mesh_.to_vertex_handle(heh).idx();
-        for(int k=0; k<3; k++)
-        {
-            x[1][k] = mesh_.point(mesh_.to_vertex_handle(heh))[k];
-            x[1][k].diff(3*1+k, 12);
-        }
-
         OMMesh::HalfedgeHandle nextheh = mesh_.next_halfedge_handle(heh);
         inds[2] = mesh_.to_vertex_handle(nextheh).idx();
-        for(int k=0; k<3; k++)
-        {
-            x[2][k] = mesh_.point(mesh_.to_vertex_handle(nextheh))[k];
-            x[2][k].diff(3*2+k, 12);
-        }
-
         OMMesh::HalfedgeHandle prevheh = mesh_.next_halfedge_handle(mesh_.opposite_halfedge_handle(heh));
         inds[3] = mesh_.to_vertex_handle(prevheh).idx();
-        for(int k=0; k<3; k++)
-        {
-            x[3][k] = mesh_.point(mesh_.to_vertex_handle(prevheh))[k];
-            x[3][k].diff(3*3+k, 12);
-        }
 
-        F<double> e0[3], e1[3], e2[3];
+        for(int j=0; j<4; j++)
+            for(int k=0; k<3; k++)
+            {
+                xx[j][k] = q[3*inds[j]+k];
+                xx[j][k].diff(3*j+k, 12);
+                x[j][k] = xx[j][k];
+                x[j][k].diff(3*j+k, 12);
+            }
+
+        F<F<double> > e0[3], e1[3], e2[3];
         for(int k=0; k<3; k++)
         {
             e0[k] = x[1][k]-x[0][k];
@@ -543,9 +616,9 @@ void DevelopableMesh::buildObjective(double &f, Eigen::VectorXd &Df, Eigen::Spar
             e2[k] = x[3][k]-x[0][k];
         }
 
-        F<double> e0n = norm(e0);
+        F< F<double> > e0n = norm(e0);
 
-        F<double> n0[3], n1[3];
+        F<F<double> > n0[3], n1[3];
 
         cross(e0, e1, n0);
         cross(e2, e0, n1);
@@ -553,11 +626,11 @@ void DevelopableMesh::buildObjective(double &f, Eigen::VectorXd &Df, Eigen::Spar
         normalize(n0);
         normalize(n1);
 
-        F<double> theta = acos(dot(n0,n1));
+        F<F<double> > theta = acos(dot(n0,n1));
 
         Ff += pow(e0n, 1.0/3.0) * pow(theta, 7.0/3.0);
 
-        f += Ff.val();
+        f += Ff.val().val();
 
         for(int j=0; j<4; j++)
         {
@@ -586,34 +659,86 @@ void DevelopableMesh::buildObjective(double &f, Eigen::VectorXd &Df, Eigen::Spar
     Hf.setZero();
     Hf.setFromTriplets(eCoefficients.begin(), eCoefficients.end());
 
+    // sanity check
+    /*for(int i=0; i<numdofs; i++)
+    {
+        for(int j=0; j<numdofs; j++)
+        {
+            assert(fabs(Hf.coeffRef(i,j) - Hf.coeffRef(j,i)) < 1e-6);
+        }
+    }*/
 }
 
-F<double> DevelopableMesh::norm(fadbad::F<double> *v)
+double DevelopableMesh::lineSearch(const Eigen::VectorXd &q, const Eigen::VectorXd &dq, const Eigen::VectorXd &lambda, const vector<double> &targetHeights)
 {
-    F<double> result = 0;
-    for(int i=0; i<3; i++)
-        result += v[i]*v[i];
-    return sqrt(result);
+    double alpha = 1.0;
+    double c1 = 1e-4;
+    double c2 = 0.1;
+    double fac = 0.9;
+
+    double f;
+    VectorXd Df;
+    SparseMatrix<double> dummy;
+    buildObjective(q, f, Df, dummy);
+
+    cout << "Gradient " << Df.dot(dq) << endl;
+    assert(Df.dot(dq) < 0);
+    for(int i=0;; i++)
+    {
+        VectorXd newq = q + alpha*dq;
+        projectPositionsOntoConstraints(newq, newq, targetHeights);
+        double newf;
+        VectorXd newDf;
+        buildObjective(newq, newf, newDf, dummy);
+
+        bool armijo = newf <= f + c1*alpha*Df.dot(dq);
+        bool curvature = true;//newDf.dot(dq) >= c2*Df.dot(dq);
+
+//        cout << alpha << " " << f + c1*alpha*Df.dot(dq)-newf << " " << newDf.dot(dq) - c2*Df.dot(dq) << endl;
+        if(armijo && curvature)
+            return alpha;
+        alpha *= fac;
+    }
+    cout << "Line search failed!" << endl;
+    return alpha;
 }
 
-void DevelopableMesh::cross(fadbad::F<double> *v1, fadbad::F<double> *v2, fadbad::F<double> *result)
+void DevelopableMesh::projectPositionsOntoConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &result, const vector<double> &targetHeights)
 {
-    result[0] = v1[1]*v2[2] - v1[2]*v2[1];
-    result[1] = v1[2]*v2[0] - v1[0]*v2[2];
-    result[2] = v1[0]*v2[1] - v1[1]*v2[0];
-}
+    VectorXd g;
+    SparseMatrix<double> Dg;
+    VectorXd newq = q;
+    for(int i=1; i<100; i++)
+    {
+        buildConstraints(newq, g, Dg, targetHeights);        
+        double oldg = g.norm();
 
-void DevelopableMesh::normalize(fadbad::F<double> *v)
-{
-    F<double> n = norm(v);
-    for(int i=0; i<3; i++)
-        v[i] /= n;
-}
+        if(oldg < 1e-6)
+        {
+            result = newq;
+            return;
+        }
 
-F<double> DevelopableMesh::dot(fadbad::F<double> *v1, fadbad::F<double> *v2)
-{
-    F<double> result = 0;
-    for(int i=0; i<3; i++)
-        result += v1[i]*v2[i];
-    return result;
+        MatrixXd dense(Dg);
+        JacobiSVD<MatrixXd> svd(dense, ComputeFullU | ComputeFullV);
+
+        VectorXd tmp = svd.matrixU().transpose() * -g;
+        for(int i=0; i<g.size(); i++)
+        {
+            double val = svd.singularValues()[i];
+            if(val < 1e-6)
+                tmp[i] = 0;
+            else
+                tmp[i] /= val*val;
+        }
+        VectorXd lambda = svd.matrixU() * tmp;
+
+        //SparseMatrix<double> DgDgT = Dg*Dg.transpose();
+        //MatrixXd dense(DgDgT);
+        //BiCGSTAB<SparseMatrix<double> > solver(DgDgT);
+        //VectorXd lambda = solver.solve(-g);
+        //VectorXd lambda = dense.ldlt().solve(-g);
+        newq += Dg.transpose()*lambda;
+    }
+    result = newq;
 }
