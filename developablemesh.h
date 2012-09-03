@@ -12,6 +12,7 @@ struct BoundaryCurve
     std::vector<int> edges;
     double arclength;
     double height;
+    double targetheight;
 };
 
 class DevelopableMesh : public Mesh
@@ -24,7 +25,7 @@ public:
 
     void getBoundaryHeights(std::vector<double> &heights);
 
-    void deformLantern(const std::vector<double> &newheights, int maxiters);
+    void deformLantern(int maxiters);
 
 private:
     std::vector<BoundaryCurve> boundaries_;
@@ -35,11 +36,19 @@ private:
     Eigen::Vector3d point2Vector(OMMesh::Point pt);
 
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf);
-    void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, Eigen::SparseMatrix<double> &Dg, const std::vector<double> &targetHeights);
-    void projectOntoConstraints(const Eigen::VectorXd &v, const Eigen::SparseMatrix<double> &Dg, Eigen::VectorXd &result);
-    void projectPositionsOntoConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &result, const std::vector<double> &targetHeights);
+    void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, Eigen::SparseMatrix<double> &Dg);
+    void projectOntoConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &newq);
+    void projectVectorOntoConstraints(const Eigen::VectorXd &q, const Eigen::VectorXd &v, Eigen::VectorXd &newv);
 
-    double lineSearch(const Eigen::VectorXd &q, const Eigen::VectorXd &dq, const Eigen::VectorXd &lambda, const std::vector<double> &targetHeights);
+    bool collapseShortEdges();
+    void computeCreaseWidths(std::vector<double> &widths);
+    double turningAngle(int edge);
+
+    double lineSearch(const Eigen::VectorXd &q, const Eigen::VectorXd &dq, double mu);
+
+    void collapseEdge(int edgeidx);
+    bool canCollapseEdge(int edgeidx);
+    void centerCylinder();
 
     template<class T> static T norm(T *v);
     template<class T> static void cross(T *v1, T *v2, T *result);

@@ -57,9 +57,9 @@ void Controller::deformLantern()
 {
     vector<double> heights;
     m_.getBoundaryHeights(heights);
-    for(int i=0; i<1000; i++)
+    for(int i=0; i<1; i++)
     {
-        m_.deformLantern(heights,1);
+        m_.deformLantern(50);
         stringstream ss;
         ss << "frame_" << setfill('0') << setw(6) << i << ".png";
         mw_.saveScreenshot(ss.str());
@@ -73,6 +73,6 @@ void Controller::updateLanternHeight(double newheight)
     if(heights.size() == 2)
     {
         heights[1] = newheight;
-        m_.deformLantern(heights,1);
+        m_.deformLantern(1);
     }
 }
