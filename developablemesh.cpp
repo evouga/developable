@@ -9,11 +9,9 @@
 using namespace std;
 using namespace Eigen;
 using namespace fadbad;
-
+using namespace Ipopt;
 
 const double PI = 3.1415926535898;
-
-typedef Eigen::Triplet<double> T;
 
 DevelopableMesh::DevelopableMesh()
 {
@@ -176,81 +174,50 @@ void DevelopableMesh::deformLantern(int maxiters)
             q[3*i+k] = pt[k];
     }
 
-    VectorXd g;
-    SparseMatrix<double> Dg;
     double f;
     VectorXd Df;
-    SparseMatrix<double> Hf;
+    vector<T> Hf;
+    VectorXd g;
+    vector<T> Dg;
+    vector<vector<T> > Hg;
 
+    cout << "build objective" << endl;
     buildObjective(q, f, Df, Hf);
-    buildConstraints(q, g, Dg);
+    cout << "build constraints" << endl;
+    buildConstraints(q, g, Dg, Hg);
+    cout << "done" << endl;
 
-    for(int iter=0; iter<20; iter++)
-    {
-        VectorXd startq = q;
-        VectorXd dq(numdofs);
-        dq.setZero();
+    double nnz_j = Dg.size();
+    double nnz_h = Hf.size();
+    for(int i=0; i<Hg.size(); i++)
+        nnz_h += Hg[i].size();
 
-        vector<T> bigcoeffs;
+    double numconstraints = g.size();
 
-        int numconstraints = g.size();
+    SmartPtr<TNLP> mynlp = new IpoptSolver(numdofs, numconstraints, nnz_j, nnz_h, q, *this);
 
-        SparseMatrix<double> M(numdofs+numconstraints, numdofs+numconstraints);
-        M.setZero();
-        for(int i=0; i<numdofs; i++)
-            for(int j=0; j<numdofs; j++)
-            {
-                double coeff = Hf.coeffRef(i,j);
-                if(coeff != 0.0)
-                    bigcoeffs.push_back(T(i,j,coeff));
-            }
-        for(int i=0; i<numconstraints; i++)
-        {
-            for(int j=0; j<numdofs; j++)
-            {
-                double coeff = Dg.coeffRef(i,j);
-                if(coeff != 0.0)
-                {
-                    bigcoeffs.push_back(T(numdofs+i,j,coeff));
-                    bigcoeffs.push_back(T(j, numdofs+i, coeff));
-                }
-            }
-        }
+    cout << "Creating app" << endl;
+    IpoptApplication *app = new IpoptApplication();
 
-        M.setFromTriplets(bigcoeffs.begin(), bigcoeffs.end());
+     // Change some options
+     // Note: The following choices are only examples, they might not be
+     //       suitable for your optimization problem.
+     app->Options()->SetNumericValue("tol", 1e-9);
+     app->Options()->SetStringValue("mu_strategy", "adaptive");
+     //app->Options()->SetStringValue("derivative_test", "second-order");
+     //app->Options()->SetStringValue("output_file", "ipopt.out");
 
-        BiCGSTAB<SparseMatrix<double> > solver(M);
-        MatrixXd dense(M);
-        JacobiSVD<MatrixXd> svd(dense, ComputeFullU | ComputeFullV);
+     // Intialize the IpoptApplication and process the options
+     ApplicationReturnStatus status;
+     status = app->Initialize();
+     if (status != Solve_Succeeded) {
+       cout << "\n\n*** Error during initialization!\n" << endl;
+       return;
+     }
+     cout << "Starting solve" << endl;
 
-        VectorXd rhs(numdofs+numconstraints);
-        rhs.setZero();
-        rhs.segment(0, numdofs) = -Df;
-
-
-        VectorXd tmp = svd.matrixU().transpose()*rhs;
-        for(int i=0; i<numdofs+numconstraints; i++)
-        {
-            double div = svd.singularValues()[i];
-            if(div < 1e-4)
-                tmp[i] = 0;
-            else
-                tmp[i] /= div;
-        }
-
-        VectorXd result = svd.matrixV() * tmp;
-
-        double residual = (M*result-rhs).norm();
-
-        cout << " residual " << residual;
-
-        dq = result.segment(0, numdofs);
-        q += dq;
-        projectOntoConstraints(q, q);
-        cout << "Step " << (q-startq).norm() << endl;
-    }
-
-    return;
+     // Ask Ipopt to solve the problem
+     status = app->OptimizeTNLP(mynlp);
 }
 
 Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
@@ -261,11 +228,13 @@ Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
     return result;
 }
 
-void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMatrix<double> &Dg)
+void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, vector<T> &Dg, vector<vector<T> > &Hg)
 {
     int numverts = mesh_.n_vertices();
     int numdofs = 3*numverts;
     int boundaryverts = 0;
+    Dg.clear();
+    Hg.clear();
 
     for(int i=0; i<numverts; i++)
     {
@@ -285,8 +254,6 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
     int row = 0;
     g.resize(numconstraints);
     g.setZero();
-    std::vector<T> coefficients;
-
 
     // interior angles sum to 2 PI, boundary angles sum to PI
     for(int i=0; i<numverts; i++)
@@ -294,7 +261,7 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
         OMMesh::VertexHandle vh = mesh_.vertex_handle(i);
         bool bdry = mesh_.is_boundary(vh);
 
-        F<double> deficit = 0;
+        F<F<double> > deficit = 0;
 
         int valence = mesh_.valence(vh);
 
@@ -305,10 +272,13 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
         }
 
         vidxs[valence] = i;
-        F<double> centpt[3];
+        F<F<double> > centpt[3];
+        F<double> centptd[3];
         for(int k=0; k<3; k++)
         {
-            centpt[k] = q[3*vh.idx()+k];
+            centptd[k] = q[3*vh.idx()+k];
+            centptd[k].diff(3*valence+k, 3*(valence+1));
+            centpt[k] = centptd[k];
             centpt[k].diff(3*valence+k, 3*(valence+1));
         }
 
@@ -317,13 +287,16 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
         {
             OMMesh::VertexHandle tov = mesh_.to_vertex_handle(voh);
             vidxs[j] = tov.idx();
-            F<double> tovpt[3];
+            F<F<double> > tovpt[3];
+            F<double> tovptd[3];
             for(int k=0; k<3; k++)
             {
-                tovpt[k] = q[3*tov.idx()+k];
+                tovptd[k] = q[3*tov.idx()+k];
+                tovptd[k].diff(3*j+k, 3*(valence+1));
+                tovpt[k] = tovptd[k];
                 tovpt[k].diff(3*j+k, 3*(valence+1));
             }
-            F<double> e1[3];
+            F<F<double> > e1[3];
             for(int k=0; k<3; k++)
             {
                 e1[k] = tovpt[k] - centpt[k];
@@ -339,32 +312,46 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
 
 
             //OMMesh::Point e2pt = mesh_.point(mesh_.to_vertex_handle(voh)) - mesh_.point(vh);
-            F<double> tovpt2[3];
+            F<F<double> > tovpt2[3];
+            F<double> tovpt2d[3];
             for(int k=0; k<3; k++)
             {
-                tovpt2[k] = q[3*mesh_.to_vertex_handle(voh).idx()+k];
+                tovpt2d[k] = q[3*mesh_.to_vertex_handle(voh).idx()+k];
+                tovpt2d[k].diff( 3*((j+1)%valence) + k, 3*(valence+1) );
+                tovpt2[k] = tovpt2d[k];
                 tovpt2[k].diff( 3*((j+1)%valence) + k, 3*(valence+1) );
             }
-            F<double> e2[3];
+            F<F<double> > e2[3];
             for(int k=0; k<3; k++)
             {
                 e2[k] = tovpt2[k]-centpt[k];
             }
-            F<double> e1norm = norm(e1);
-            F<double> e2norm = norm(e2);
-            F<double> theta = acos(dot(e1,e2) / e1norm / e2norm );
+            F<F<double> > e1norm = norm(e1);
+            F<F<double> > e2norm = norm(e2);
+            F<F<double> > theta = acos(dot(e1,e2) / e1norm / e2norm );
             deficit += theta;
         }
         deficit -= (bdry ? PI : 2*PI);
-        g[row] = deficit.val();
+        g[row] = deficit.val().val();
+
+        vector<T> Hgentry;
 
         for(int j=0; j<=valence; j++)
         {
             for(int k=0; k<3; k++)
             {
-                coefficients.push_back(T(row, 3*vidxs[j]+k, deficit.d(3*j+k)));
+                Dg.push_back(T(row, 3*vidxs[j]+k, deficit.d(3*j+k).val()));
+                for(int l=0; l<=valence; l++)
+                {
+                    for(int m=0; m<3; m++)
+                    {
+                        if(3*j+k <= 3*l+m)
+                            Hgentry.push_back(T(3*vidxs[j]+k, 3*vidxs[l]+m, deficit.d(3*j+k).d(3*l+m)));
+                    }
+                }
             }
         }
+        Hg.push_back(Hgentry);
         row++;
     }
     assert(row == numverts);
@@ -372,7 +359,7 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
     // boundary arc length is constant
     for(int i=0; i<(int)boundaries_.size(); i++)
     {
-        F<double> len = 0;
+        F<F<double> > len = 0;
 
         int numedges = boundaries_[i].edges.size();
         map<int, int> vertids;
@@ -390,17 +377,23 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
             if(vertids.find(idx2) == vertids.end())
                 vertids[idx2] = curid++;
 
-            F<double> pt1[3];
-            F<double> pt2[3];
+            F<F<double> > pt1[3];
+            F<F<double> > pt2[3];
+            F<double> pt1d[3];
+            F<double> pt2d[3];
             for(int k=0; k<3; k++)
             {
-                pt1[k] = q[3*idx1+k];
+                pt1d[k] = q[3*idx1+k];
+                pt1d[k].diff(3*vertids[idx1]+k, 3*numedges);
+                pt1[k] = pt1d[k];
                 pt1[k].diff(3*vertids[idx1]+k, 3*numedges);
-                pt2[k] = q[3*idx2+k];
+                pt2d[k] = q[3*idx2+k];
+                pt2d[k].diff(3*vertids[idx2]+k, 3*numedges);
+                pt2[k] = pt2d[k];
                 pt2[k].diff(3*vertids[idx2]+k, 3*numedges);
             }
 
-            F<double> edge[3];
+            F<F<double> > edge[3];
             for(int k=0; k<3; k++)
             {
                 edge[k] = pt2[k] - pt1[k];
@@ -411,13 +404,25 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
         }
 
         len -= boundaries_[i].arclength;
-        g[row] = len.val();
+        g[row] = len.val().val();
 
+        vector<T> Hgentry;
         for(map<int,int>::iterator it = vertids.begin(); it != vertids.end(); ++it)
         {
             for(int k=0; k<3; k++)
-                coefficients.push_back(T(row, 3*it->first+k, len.d(3*it->second+k)));
+            {
+                Dg.push_back(T(row, 3*it->first+k, len.d(3*it->second+k).val()));
+                for(map<int,int>::iterator it2 = vertids.begin(); it2 != vertids.end(); ++it2)
+                {
+                    for(int l=0; l<3; l++)
+                    {
+                        if(3*it->first+k <= 3*it2->first+l)
+                            Hgentry.push_back(T(3*it->first+k, 3*it2->first+l, len.d(3*it->second+k).d(3*it2->second+l)));
+                    }
+                }
+            }
         }
+        Hg.push_back(Hgentry);
 
         row++;
     }
@@ -440,7 +445,9 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
             {
                 OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(*it));
                 g[row] = q[3* *it+k] - pt[k];//boundaries_[i].targetheight;
-                coefficients.push_back(T(row, 3* *it + k, 1.0));
+                Dg.push_back(T(row, 3* *it + k, 1.0));
+                vector<T> empty;
+                Hg.push_back(empty);
                 row++;
             }
         }
@@ -449,15 +456,18 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
     assert(row == numverts + (int)boundaries_.size() + 3*boundaryverts);
 
     // total area is constant
-    F<double> area = 0;
+    F<F<double> > area = 0;
 
     for(int i=0; i<numverts; i++)
     {
         OMMesh::VertexHandle vh = mesh_.vertex_handle(i);
-        F<double> centpt[3];
+        F<F<double> > centpt[3];
+        F<double> centptd[3];
         for(int k=0; k<3; k++)
         {
-            centpt[k] = q[3*vh.idx()+k];
+            centptd[k] = q[3*vh.idx()+k];
+            centptd[k].diff(3*i+k, 3*numverts);
+            centpt[k] = centptd[k];
             centpt[k].diff(3*i+k, 3*numverts);
         }
         int valence = mesh_.valence(vh);
@@ -466,13 +476,16 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
         {
             OMMesh::VertexHandle tov = mesh_.to_vertex_handle(voh);
             int idx1 = tov.idx();
-            F<double> tovpt[3];
+            F<F<double> > tovpt[3];
+            F<double> tovptd[3];
             for(int k=0; k<3; k++)
             {
-                tovpt[k] = q[3*tov.idx() + k];
+                tovptd[k] = q[3*tov.idx() + k];
+                tovptd[k].diff(3*idx1+k, 3*numverts);
+                tovpt[k] = tovptd[k];
                 tovpt[k].diff(3*idx1+k, 3*numverts);
             }
-            F<double> e1[3];
+            F<F<double> > e1[3];
             for(int k=0; k<3; k++)
                 e1[k] = tovpt[k]-centpt[k];
 
@@ -485,42 +498,51 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, SparseMat
 
             tov = mesh_.to_vertex_handle(voh);
             int idx2 = tov.idx();
-            F<double> tovpt2[3];
+            F<F<double> > tovpt2[3];
+            F<double> tovpt2d[3];
             for(int k=0; k<3; k++)
             {
-                tovpt2[k] = q[3*tov.idx()+k];
+                tovpt2d[k] = q[3*tov.idx()+k];
+                tovpt2d[k].diff(3*idx2+k, 3*numverts);
+                tovpt2[k] = tovpt2d[k];
                 tovpt2[k].diff(3*idx2+k, 3*numverts);
             }
-            F<double> e2[3];
+            F<F<double> > e2[3];
             for(int k=0; k<3; k++)
                 e2[k] = tovpt2[k]-centpt[k];
 
-            F<double> cr[3];
+            F<F<double> > cr[3];
             cross(e1,e2,cr);
             area += 0.5/3.0 * norm(cr);
         }
     }
 
     area -= surfacearea_;
-    g[row] = area.val();
+    g[row] = area.val().val();
+    vector<T> Hgpart;
 
     for(int i=0; i<numverts; i++)
     {
         for(int k=0; k<3; k++)
-            coefficients.push_back(T(row, 3*i+k, area.d(3*i+k)));
+        {
+            Dg.push_back(T(row, 3*i+k, area.d(3*i+k).val()));
+            for(int j=0; j<numverts; j++)
+            {
+                for(int l=0; l<3; l++)
+                {
+                    if(3*i+k <= 3*j+l)
+                        Hgpart.push_back(T(3*i+k, 3*j+l, area.d(3*i+k).d(3*j+l)));
+                }
+            }
+        }
     }
+    Hg.push_back(Hgpart);
     row++;
-
+    assert(Hg.size() == numconstraints);
     assert(row == numconstraints);
-
-    Dg.resize(numconstraints, numdofs);
-    Dg.setZero();
-
-    Dg.setFromTriplets(coefficients.begin(), coefficients.end());
-
 }
 
-void DevelopableMesh::buildObjective(const VectorXd &q, double &f, Eigen::VectorXd &Df, Eigen::SparseMatrix<double> &Hf)
+void DevelopableMesh::buildObjective(const VectorXd &q, double &f, Eigen::VectorXd &Df, vector<T> &Hf)
 {
     int numverts = mesh_.n_vertices();
     int numdofs = 3*numverts;
@@ -598,76 +620,17 @@ void DevelopableMesh::buildObjective(const VectorXd &q, double &f, Eigen::Vector
                 for(int l=0; l<4; l++)
                 {
                     for(int m=0; m<3; m++)
-                        nonzeros[pair<int,int>(3*inds[j]+k,3*inds[l]+m)] += ideriv.d(3*l+m);
+                        if(3*inds[j]+k <= 3*inds[l]+m)
+                            nonzeros[pair<int,int>(3*inds[j]+k,3*inds[l]+m)] += ideriv.d(3*l+m);
                 }
             }
         }
     }
 
-    vector<T> eCoefficients;
     for(map<pair<int, int>, double>::iterator it = nonzeros.begin(); it != nonzeros.end(); ++it)
     {
-        eCoefficients.push_back(T(it->first.first, it->first.second, it->second));
+        Hf.push_back(T(it->first.first, it->first.second, it->second));
     }
-
-
-    Hf.resize(numdofs, numdofs);
-    Hf.setZero();
-    Hf.setFromTriplets(eCoefficients.begin(), eCoefficients.end());
-
-    // sanity check
-    /*for(int i=0; i<numdofs; i++)
-    {
-        for(int j=0; j<numdofs; j++)
-        {
-            assert(fabs(Hf.coeffRef(i,j) - Hf.coeffRef(j,i)) < 1e-6);
-        }
-    }*/
-}
-
-double DevelopableMesh::lineSearch(const Eigen::VectorXd &q, const Eigen::VectorXd &dq, double mu)
-{
-    double alpha = 1.0;
-    double c1 = 1e-4;
-    //double c2 = 0.1;
-    double fac = 0.9;
-
-    double f;
-    VectorXd g;
-    VectorXd Df;
-    SparseMatrix<double> Dg;
-    SparseMatrix<double> dummy;
-    buildObjective(q, f, Df, dummy);
-    buildConstraints(q, g, Dg);
-
-    double obj =f + 0.5*mu*g.dot(g);
-    VectorXd Dobj = Df + mu*Dg.transpose()*g;
-
-    assert(Dobj.dot(dq) < 0);
-
-
-    for(int i=0;; i++)
-    {
-        double newf;
-        VectorXd newDf, newg;
-        SparseMatrix<double> newDg;
-
-        VectorXd newq = q + alpha*dq;
-        buildObjective(newq, newf, newDf, dummy);
-        buildConstraints(newq, newg, newDg);
-        double newobj = newf + 0.5*mu*newg.dot(newg);
-        VectorXd newDobj = newDf + mu * newDg.transpose()*newg;
-
-        bool armijo = newobj < obj + c1*alpha*Dobj.dot(dq);
-        //bool curvature = newDobj.dot(dq) >= c2*Dobj.dot(dq);
-        if(armijo)
-        {
-            return alpha;
-        }
-        alpha *= fac;
-    }
-    cout << "Line search failed!" << endl;
-    return 0;
 }
 
 bool DevelopableMesh::canCollapseEdge(int edgeidx)
@@ -937,74 +900,191 @@ double DevelopableMesh::turningAngle(int edge)
     return acos(n0.dot(n1));
 }
 
-void DevelopableMesh::projectVectorOntoConstraints(const VectorXd &q, const VectorXd &v, VectorXd &newv)
+IpoptSolver::IpoptSolver(int n, int m, int nnz_j, int nnz_h, VectorXd &initq, DevelopableMesh &mesh) : n_(n), m_(m), nnz_j_(nnz_j), nnz_h_(nnz_h), initq_(initq), mesh_(mesh)
 {
-    // min 0.5||v - v0||^2 s.t. \grad G v = 0
-    // v - v0 + \grad G^T lambda = 0
-    // \grad G v = 0
-    //
-    // \grad G \grad G^T lambda = \grad G v0
-    // v = v0 - \grad G^T lambda
 
-    VectorXd g;
-    SparseMatrix<double> Dg;
-    newv = v;
-    buildConstraints(q, g, Dg);
-    SparseMatrix<double> M(Dg*Dg.transpose());
-    VectorXd rhs = Dg * v;
-    MatrixXd dense(M);
-
-    JacobiSVD<MatrixXd> svd(dense, ComputeFullU | ComputeFullV);
-    VectorXd tmp = svd.matrixU().transpose()*rhs;
-    for(int i=0; i<g.size(); i++)
-    {
-        double val = svd.singularValues()[i];
-        if(val < 1e-6)
-            tmp[i] = 0;
-        else
-            tmp[i] = tmp[i]/val;
-    }
-    VectorXd lambda = svd.matrixV()*tmp;
-    VectorXd dv = -Dg.transpose()*lambda;
-    newv += dv;
 }
 
-void DevelopableMesh::projectOntoConstraints(const VectorXd &q, VectorXd &newq)
+bool IpoptSolver::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style)
 {
-    VectorXd g;
-    SparseMatrix<double> Dg;
-    newq = q;
-    while(true)
-    {
-        buildConstraints(newq, g, Dg);
-        if(g.norm() < 1e-5)
-        {
-            cout << "Final violation " << g.norm() << endl;
-            return;
-        }
-        SparseMatrix<double> M(Dg*Dg.transpose());
-        VectorXd rhs = g;
-        MatrixXd dense(M);
+    n = n_;
+    m = m_;
+    nnz_jac_g = nnz_j_;
+    nnz_h_lag = nnz_h_;
+    index_style = C_STYLE;
+    return true;
+}
 
-        JacobiSVD<MatrixXd> svd(dense, ComputeFullU | ComputeFullV);
-        VectorXd tmp = svd.matrixU().transpose()*rhs;
-        for(int i=0; i<g.size(); i++)
+bool IpoptSolver::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number *x_u, Ipopt::Index m, Ipopt::Number *g_l, Ipopt::Number *g_u)
+{
+    for(int i=0; i<n; i++)
+    {
+        x_l[i] = -std::numeric_limits<double>::infinity();
+        x_u[i] = std::numeric_limits<double>::infinity();
+    }
+    for(int i=0; i<m; i++)
+    {
+        g_l[i] = 0;
+        g_u[i] = 0;
+    }
+    return true;
+}
+
+bool IpoptSolver::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number *x, bool init_z, Ipopt::Number *z_L, Ipopt::Number *z_U, Ipopt::Index m, bool init_lambda, Ipopt::Number *lambda)
+{
+    if(init_x)
+    {
+        for(int i=0; i<n; i++)
+            x[i] = initq_[i];
+    }
+    assert(!init_z);
+    assert(!init_lambda);
+    return true;
+}
+
+bool IpoptSolver::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool new_x, Ipopt::Number &obj_value)
+{
+    VectorXd q(n);
+    for(int i=0; i<n; i++)
+        q[i] = x[i];
+    double f;
+    VectorXd dummy;
+    vector<T> dummyT;
+    mesh_.buildObjective(q, f, dummy, dummyT);
+    obj_value = f;
+    return true;
+}
+
+bool IpoptSolver::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool new_x, Ipopt::Number *grad_f)
+{
+    VectorXd q(n);
+    for(int i=0; i<n; i++)
+        q[i] = x[i];
+    double f;
+    VectorXd Df;
+    vector<T> dummyT;
+    mesh_.buildObjective(q, f, Df, dummyT);
+    for(int i=0; i<n; i++)
+        grad_f[i] = Df[i];
+    return true;
+}
+
+bool IpoptSolver::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool new_x, Ipopt::Index m, Ipopt::Number *g)
+{
+    VectorXd q(n);
+    for(int i=0; i<n; i++)
+        q[i] = x[i];
+    VectorXd myg;
+    vector<T> dummyT;
+    vector<vector<T> > dummyH;
+    mesh_.buildConstraints(q, myg, dummyT, dummyH);
+    for(int i=0; i<m; i++)
+        g[i] = myg[i];
+    return true;
+}
+
+bool IpoptSolver::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool new_x, Ipopt::Index m, Ipopt::Index nele_jac, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
+{
+    if(iRow != NULL && jCol != NULL)
+    {
+        VectorXd g;
+        vector<T> Dg;
+        vector<vector<T> > dummyH;
+        mesh_.buildConstraints(initq_, g, Dg, dummyH);
+        assert(Dg.size() == nele_jac);
+        for(int i=0; i<Dg.size(); i++)
         {
-            double val = svd.singularValues()[i];
-            if(val < 1e-6)
-                tmp[i] = 0;
-            else
-                tmp[i] = tmp[i]/val;
-        }
-        VectorXd lambda = svd.matrixV()*tmp;
-        //residual = (M*lambda+rhs).norm();
-        VectorXd dq = -Dg.transpose()*lambda;
-        double relchange = dq.norm() / newq.norm();
-        newq += dq;
-        if( relchange < 1e-6)
-        {
-            cout << "Final violation " << g.norm() << endl;
-            return;
+            iRow[i] = Dg[i].row();
+            jCol[i] = Dg[i].col();
         }
     }
+    else
+    {
+        VectorXd q(n);
+        for(int i=0; i<n; i++)
+            q[i] = x[i];
+        VectorXd g;
+        vector<T> Dg;
+        vector<vector<T> > dummyH;
+        mesh_.buildConstraints(q, g, Dg, dummyH);
+        for(int i=0; i<Dg.size(); i++)
+            values[i] = Dg[i].value();
+    }
+    return true;
+}
+
+bool IpoptSolver::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool new_x, Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number *lambda, bool new_lambda, Ipopt::Index nele_hess, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
+{
+    if(values == NULL)
+    {
+        double f;
+        VectorXd Df;
+        vector<T> Hf;
+        mesh_.buildObjective(initq_, f, Df, Hf);
+
+        VectorXd g;
+        vector<T> dummyT;
+        vector<vector<T> > Hg;
+
+        mesh_.buildConstraints(initq_, g, dummyT, Hg);
+        int idx=0;
+        for(int i=0; i<Hf.size(); i++)
+        {
+            iRow[idx] = Hf[i].row();
+            jCol[idx] = Hf[i].col();
+            idx++;
+        }
+        for(int i=0; i<Hg.size();i++)
+        {
+            for(int j=0; j<Hg[i].size(); j++)
+            {
+                iRow[idx] = Hg[i][j].row();
+                jCol[idx] = Hg[i][j].col();
+                idx++;
+            }
+        }
+        assert(idx == nele_hess);
+    }
+    else
+    {
+        VectorXd q(n);
+        for(int i=0; i<n; i++)
+        {
+            q[i] = x[i];
+        }
+
+        double f;
+        VectorXd Df;
+        vector<T> Hf;
+        mesh_.buildObjective(q, f, Df, Hf);
+
+        VectorXd g;
+        vector<T> dummyT;
+        vector<vector<T> > Hg;
+
+        mesh_.buildConstraints(q, g, dummyT, Hg);
+        int idx=0;
+        for(int i=0; i<Hf.size(); i++)
+        {
+            values[idx] = obj_factor*Hf[i].value();
+            idx++;
+        }
+        for(int i=0; i<Hg.size();i++)
+        {
+            for(int j=0; j<Hg[i].size(); j++)
+            {
+                values[idx] = lambda[i]*Hg[i][j].value();
+                idx++;
+            }
+        }
+        assert(idx == nele_hess);
+    }
+    return true;
+}
+
+void IpoptSolver::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *z_L, const Ipopt::Number *z_U, Ipopt::Index m, const Ipopt::Number *g, const Ipopt::Number *lambda, Ipopt::Number obj_value, const Ipopt::IpoptData *ip_data, Ipopt::IpoptCalculatedQuantities *ip_cq)
+{
+    cout << "Status " << status << " final objective " << obj_value << endl;
+    for(int i=0; i<n; i++)
+        initq_[i] = x[i];
 }
