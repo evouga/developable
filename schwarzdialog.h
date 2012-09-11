@@ -15,8 +15,8 @@ public:
     explicit SchwarzDialog(QWidget *parent = 0);
     ~SchwarzDialog();
 
-    void setDefaultParameters(double r, double h, int n, int m);
-    void getChosenParameters(double &r, double &h, int &n, int &m);
+    void setDefaultParameters(double r, double h, int n, int m, double angle);
+    void getChosenParameters(double &r, double &h, int &n, int &m, double &angle);
 
 private:
     Ui::SchwarzDialog *ui;

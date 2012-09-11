@@ -11,7 +11,7 @@ using namespace Eigen;
 
 Controller::Controller(MainWindow &mw) : mw_(mw), m_()
 {
-    m_.buildSchwarzLantern(1.0, 3.0, 4, 4);
+    m_.buildSchwarzLantern(1.0, 3.0, 4, 4, 3.14159/4);
     mw_.setCylinderHeight(3.0);
 }
 
@@ -48,8 +48,9 @@ void Controller::newSchwarzLantern()
     double h = 3.0;
     int n = 4;
     int m = 4;
-    mw_.launchSchwarzLanternDialog(r, h, n, m);
-    m_.buildSchwarzLantern(r, h, n, m);
+    double angle = 3.14159/n;
+    mw_.launchSchwarzLanternDialog(r, h, n, m, angle);
+    m_.buildSchwarzLantern(r, h, n, m, angle);
     mw_.setCylinderHeight(h);
 }
 

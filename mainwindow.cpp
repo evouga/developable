@@ -36,12 +36,12 @@ string MainWindow::launchMeshOpenDialog()
     return filename;
 }
 
-void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m)
+void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle)
 {
     SchwarzDialog sd(this);
-    sd.setDefaultParameters(r, h, n, m);
+    sd.setDefaultParameters(r, h, n, m, angle);
     if(sd.exec() == QDialog::Accepted)
-        sd.getChosenParameters(r,h,n,m);
+        sd.getChosenParameters(r,h,n,m, angle);
 }
 
 void MainWindow::showError(const string &error)

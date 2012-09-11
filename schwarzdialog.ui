@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>252</width>
-    <height>200</height>
+    <height>233</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>150</y>
+     <y>180</y>
      <width>191</width>
      <height>32</height>
     </rect>
@@ -84,9 +84,9 @@
   <widget class="QLineEdit" name="radiusLineEdit">
    <property name="geometry">
     <rect>
-     <x>190</x>
+     <x>150</x>
      <y>20</y>
-     <width>41</width>
+     <width>81</width>
      <height>21</height>
     </rect>
    </property>
@@ -97,9 +97,9 @@
   <widget class="QLineEdit" name="heightLineEdit">
    <property name="geometry">
     <rect>
-     <x>190</x>
+     <x>150</x>
      <y>50</y>
-     <width>41</width>
+     <width>81</width>
      <height>21</height>
     </rect>
    </property>
@@ -131,6 +131,32 @@
    </property>
    <property name="text">
     <string>10</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="angleLabel">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>140</y>
+     <width>151</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Turn angle:</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="angleLineEdit">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>140</y>
+     <width>81</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0.314159</string>
    </property>
   </widget>
  </widget>

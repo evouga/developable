@@ -24,7 +24,7 @@ class DevelopableMesh : public Mesh
 public:
     DevelopableMesh();
 
-    void buildSchwarzLantern(double r, double h, int n, int m);
+    void buildSchwarzLantern(double r, double h, int n, int m, double angle);
     virtual bool loadMesh(const std::string &filename);
 
     void getBoundaryHeights(std::vector<double> &heights);
@@ -97,6 +97,8 @@ public:
                                    const Ipopt::Number* lambda, Ipopt::Number obj_value,
                                    const Ipopt::IpoptData* ip_data,
                                    Ipopt::IpoptCalculatedQuantities* ip_cq);
+
+    Eigen::VectorXd &getQ() {return initq_;}
 private:
     int n_, m_;
     int nnz_j_, nnz_h_;

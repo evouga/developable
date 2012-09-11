@@ -27,17 +27,18 @@ bool DevelopableMesh::loadMesh(const string &filename)
     return true;
 }
 
-void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m)
+void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, double angle)
 {
     mesh_ = OMMesh();
-
+    double alpha = angle;
     for(int i=0; i<m; i++)
     {
         double z = h*i/(m-1);
+
         for(int j=0; j<n; j++)
         {
-            double x = r*cos(2*PI*(j/double(n) + (i%2)/double(2*n)));
-            double y = r*sin(2*PI*(j/double(n) + (i%2)/double(2*n)));
+            double x = r*cos(2*PI*(j/double(n)) + i*alpha);
+            double y = r*sin(2*PI*(j/double(n)) + i*alpha);
 
             OMMesh::Point newpt(x,y,z);
 
@@ -50,7 +51,7 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m)
         {
             int fidx1 = i*n+j;
             int fidx2 = i*n + ((j+1) % n);
-            int fidx3 = (i+1)*n+ ((j + i%2) % n);
+            int fidx3 = (i+1)*n+ ((j+1)%n);
             vector<OMMesh::VertexHandle> newface;
             newface.push_back(mesh_.vertex_handle(fidx1));
             newface.push_back(mesh_.vertex_handle(fidx2));
@@ -59,7 +60,7 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m)
 
             fidx2 = fidx3;
             newface[1] = mesh_.vertex_handle(fidx2);
-            fidx3 = (i+1)*n + ((n + j-1 + i%2) % n);
+            fidx3 = (i+1)*n + ((n + j) % n);
             newface[2] = mesh_.vertex_handle(fidx3);
             mesh_.add_face(newface);
 
@@ -142,6 +143,7 @@ void DevelopableMesh::calculateSurfaceArea()
             surfacearea_ += 0.5/3.0 * (e1.cross(e2)).norm();
         }
     }
+    cout << "surface area " << surfacearea_ << endl;
 }
 
 void DevelopableMesh::getBoundaryHeights(std::vector<double> &heights)
@@ -183,10 +185,11 @@ void DevelopableMesh::deformLantern(int maxiters)
 
     cout << "build objective" << endl;
     buildObjective(q, f, Df, Hf);
+    cout << f << endl;
     cout << "build constraints" << endl;
     buildConstraints(q, g, Dg, Hg);
     cout << "done" << endl;
-
+    return;
     double nnz_j = Dg.size();
     double nnz_h = Hf.size();
     for(int i=0; i<Hg.size(); i++)
@@ -196,7 +199,6 @@ void DevelopableMesh::deformLantern(int maxiters)
 
     SmartPtr<TNLP> mynlp = new IpoptSolver(numdofs, numconstraints, nnz_j, nnz_h, q, *this);
 
-    cout << "Creating app" << endl;
     IpoptApplication *app = new IpoptApplication();
 
      // Change some options
@@ -204,6 +206,7 @@ void DevelopableMesh::deformLantern(int maxiters)
      //       suitable for your optimization problem.
      app->Options()->SetNumericValue("tol", 1e-9);
      app->Options()->SetStringValue("mu_strategy", "adaptive");
+     app->Options()->SetStringValue("check_derivatives_for_naninf", "yes" );
      //app->Options()->SetStringValue("derivative_test", "second-order");
      //app->Options()->SetStringValue("output_file", "ipopt.out");
 
@@ -218,6 +221,18 @@ void DevelopableMesh::deformLantern(int maxiters)
 
      // Ask Ipopt to solve the problem
      status = app->OptimizeTNLP(mynlp);
+     VectorXd finalq = ((IpoptSolver *)GetRawPtr(mynlp))->getQ();
+
+     buildObjective(finalq, f, Df, Hf);
+     buildConstraints(finalq, g, Dg, Hg);
+     cout << "final constraints " << g.transpose() << endl;
+     cout << "final f " << f << endl;
+
+     for(int i=0; i<numverts; i++)
+     {
+         for(int k=0; k<3; k++)
+             mesh_.point(mesh_.vertex_handle(i))[k] = finalq[3*i+k];
+     }
 }
 
 Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
@@ -354,7 +369,6 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, vector<T>
         Hg.push_back(Hgentry);
         row++;
     }
-    assert(row == numverts);
 
     // boundary arc length is constant
     for(int i=0; i<(int)boundaries_.size(); i++)
@@ -427,7 +441,6 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, vector<T>
         row++;
     }
 
-    assert(row == numverts + (int)boundaries_.size());
 
     // boundary vertices have fixed height
     for(int i=0; i<(int)boundaries_.size(); i++)
@@ -453,7 +466,6 @@ void DevelopableMesh::buildConstraints(const VectorXd &q, VectorXd &g, vector<T>
         }
     }
 
-    assert(row == numverts + (int)boundaries_.size() + 3*boundaryverts);
 
     // total area is constant
     F<F<double> > area = 0;
@@ -597,6 +609,8 @@ void DevelopableMesh::buildObjective(const VectorXd &q, double &f, Eigen::Vector
 
         normalize(n0);
         normalize(n1);
+
+        cout << e0n.val().val() << endl;
 
         F<F<double> > theta = acos(dot(n0,n1)-1e-10);
 
