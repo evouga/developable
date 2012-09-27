@@ -39,7 +39,7 @@ HEADERS += \
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.2/lib -lipopt -L/home/etienne/wsmp/wsmp-Linux32/lib/GNU -lwsmp -lgfortran -lblas -llapack
 
-INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD
+INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.2/include
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework

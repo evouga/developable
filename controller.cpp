@@ -12,7 +12,6 @@ using namespace Eigen;
 Controller::Controller(MainWindow &mw) : mw_(mw), m_()
 {
     m_.buildSchwarzLantern(1.0, 3.0, 4, 4, 3.14159/4);
-    mw_.setCylinderHeight(3.0);
 }
 
 void Controller::quit()
@@ -51,29 +50,15 @@ void Controller::newSchwarzLantern()
     double angle = 3.14159/n;
     mw_.launchSchwarzLanternDialog(r, h, n, m, angle);
     m_.buildSchwarzLantern(r, h, n, m, angle);
-    mw_.setCylinderHeight(h);
 }
 
 void Controller::deformLantern()
 {
-    vector<double> heights;
-    m_.getBoundaryHeights(heights);
     for(int i=0; i<1; i++)
     {
         m_.deformLantern(50);
         stringstream ss;
         ss << "frame_" << setfill('0') << setw(6) << i << ".png";
         mw_.saveScreenshot(ss.str());
-    }
-}
-
-void Controller::updateLanternHeight(double newheight)
-{
-    vector<double> heights;
-    m_.getBoundaryHeights(heights);
-    if(heights.size() == 2)
-    {
-        heights[1] = newheight;
-        m_.deformLantern(1);
     }
 }

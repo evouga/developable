@@ -29,7 +29,6 @@ public:
     void centerCamera();
     bool showWireframe() const;
     bool smoothShade() const;
-    void setCylinderHeight(double height);
 \
 private slots:
     void on_actionExit_triggered();
@@ -47,8 +46,6 @@ private slots:
     void on_actionSchwarz_Lantern_triggered();
 
     void on_optimizeButton_clicked();
-
-    void on_heightSlider_actionTriggered(int action);
 
 private:
     void updateGL();

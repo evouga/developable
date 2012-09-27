@@ -29,12 +29,16 @@ public:
     double areaOfInfluence(int vidx) const;
     double faceArea(int fidx) const;
 
+    int findEdge(int vid1, int vid2);
+
 protected:
     OMMesh mesh_;
     void edgeEndpoints(OMMesh::EdgeHandle eh, OMMesh::Point &pt1, OMMesh::Point &pt2);
 
 
 private:
+    Mesh(const Mesh &other);
+    Mesh &operator=(const Mesh &other);
     GLUquadric *quadric_;
 
     void drawSphere(int vertex);

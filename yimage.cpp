@@ -225,7 +225,9 @@ static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t lengt
 static void user_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
 	png_voidp read_io_ptr = png_get_io_ptr(png_ptr) ;
-	(void) fread( (unsigned char*) data, length, 1, (FILE*) read_io_ptr ) ;
+        unsigned int read = fread( (unsigned char*) data, length, 1, (FILE*) read_io_ptr ) ;
+        if(read != length)
+            exit(0);
 }
 
 // Some error strings

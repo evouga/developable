@@ -215,3 +215,15 @@ double Mesh::faceArea(int fidx) const
     Vector3d e2 = points[2]-points[0];
     return 0.5 * e1.cross(e2).norm();
 }
+
+int Mesh::findEdge(int vid1, int vid2)
+{
+    OMMesh::VertexHandle vhstart = mesh_.vertex_handle(vid1);
+    for(OMMesh::VertexOHalfedgeIter voh = mesh_.voh_iter(vhstart); voh; ++voh)
+    {
+        int tov = mesh_.to_vertex_handle(voh.handle()).idx();
+        if(tov == vid2)
+            return mesh_.edge_handle(voh.handle()).idx();
+    }
+    return -1;
+}
