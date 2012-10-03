@@ -43,11 +43,13 @@ void Controller::getSceneBounds(Eigen::Vector3d &center, double &radius)
 
 void Controller::newSchwarzLantern()
 {
-    double r = 1.0;
-    double h = 3.0;
+ //   double r = 1.0;
+    double r = 0.53033;
+    double h = 2.0;
     int n = 4;
-    int m = 4;
-    double angle = 3.14159/n;
+    int m = 3;
+    //double angle = 3.14159/n;
+    double angle = -6.28319;
     mw_.launchSchwarzLanternDialog(r, h, n, m, angle);
     m_.buildSchwarzLantern(r, h, n, m, angle);
 }

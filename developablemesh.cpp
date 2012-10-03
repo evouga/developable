@@ -7,6 +7,7 @@
 #include <fadbad.h>
 #include <fadiff.h>
 #include "coin/IpIpoptApplication.hpp"
+#include "devnlp.h"
 
 using namespace std;
 using namespace Eigen;
@@ -175,6 +176,26 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
 
         assert(fabs(len1-len2) < 1e-6);
     }
+
+    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
+    {
+        OMMesh::FaceHandle fh = material_->getMesh().face_handle(i);
+        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fh); fhi; ++fhi)
+        {
+            OMMesh::HalfedgeHandle heh = fhi.handle();
+            OMMesh::HalfedgeHandle nextheh = material_->getMesh().next_halfedge_handle(heh);
+            OMMesh::VertexHandle centv = material_->getMesh().to_vertex_handle(heh);
+            OMMesh::VertexHandle v1 = material_->getMesh().from_vertex_handle(heh);
+            OMMesh::VertexHandle v2 = material_->getMesh().to_vertex_handle(nextheh);
+
+            OMMesh::Point e0 = material_->getMesh().point(v1) - material_->getMesh().point(centv);
+            OMMesh::Point e1 = material_->getMesh().point(v2) - material_->getMesh().point(centv);
+            Vector3d ve0 = point2Vector(e0);
+            Vector3d ve1 = point2Vector(e1);
+            Vector3d cr = ve0.cross(ve1);
+            assert(cr[2] < 0);
+        }
+    }
 }
 
 Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
@@ -236,16 +257,14 @@ void DevelopableMesh::deformLantern(int maxiters)
     vector<T> Hf;
     buildObjective(q, f, Df, Hf);
     cout << "Initial energy: " << f << endl;
-
     DevTLNP *mynlp = new DevTLNP(*this, q);
     IpoptApplication app;
     app.Options()->SetNumericValue("tol", 1e-9);
     //app.Options()->SetStringValue("mu_strategy", "adaptive");
     //app.Options()->SetStringValue("derivative_test", "second-order");
     app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
-    ApplicationReturnStatus status;
-    status = app.Initialize();
-    status = app.OptimizeTNLP(mynlp);
+    app.Initialize();
+    app.OptimizeTNLP(mynlp);
 
     q = mynlp->getFinalQ();
 
@@ -270,6 +289,58 @@ void DevelopableMesh::deformLantern(int maxiters)
 
 void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf)
 {
+    checkInversion(q);
+
+/*
+    f = 0;
+    Df.resize(q.size());
+    Df.setZero();
+    Hf.clear();
+
+    double r = 0.53033;
+    int n = 4;
+    int m = 3;
+    //double h = 0.6;
+    //double alpha = -2.54968;
+    double h = 0.8;
+    double alpha = -2.8174;
+    double a = 2*r*sin(PI/n);
+    double b = sqrt(4*r*r*sin(alpha/2.0)*sin(alpha/2.0) + h*h/m/m);
+    double c = sqrt(4*r*r*sin(PI/n + alpha/2.0)*sin(PI/n + alpha/2.0) + h*h/m/m);
+
+
+    double s = 0.5*(a+b+c);
+    double area = sqrt(s*(s-a)*(s-b)*(s-c));
+    double dpy = 2*area/a;
+
+    double W = n*a;
+    double H = 2*n*m*area/W;
+
+    assert(fabs(H-dpy*m) < 1e-6);
+    int vidx = 0;
+    Vector3d targetpt;
+
+    for(int i=0; i<=m; i++)
+    {
+        targetpt[2] = h*i/m;
+
+        for(int j=0; j<n; j++)
+        {
+            targetpt[0] = r*cos(2*PI*(j/double(n)) + i*alpha);
+            targetpt[1] = r*sin(2*PI*(j/double(n)) + i*alpha);
+
+            Vector3d vpos = q.segment<3>(3*vidx);
+            for(int k=0; k<3; k++)
+            {
+                f += (vpos[k]-targetpt[k])*(vpos[k]-targetpt[k]);
+                Df[3*vidx+k] = 2.0*(vpos[k]-targetpt[k]);
+                Hf.push_back(T(3*vidx+k, 3*vidx+k,2.0));
+            }
+            vidx++;
+        }
+    }
+*/
+
     double nembverts = mesh_.n_vertices();
     double nmatverts = material_->getMesh().n_vertices();
     assert(q.size() == 3*nembverts + 2*nmatverts);
@@ -358,13 +429,17 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
         normalize(n1);
         F<F<double> > costheta = dot(n0,n1);
 
-        //F<F<double> > Lpart = L*L/(A0+A1);
+        /*F<F<double> > Lpart = 0;
+        if(L.val().val() < 1e-8)
+            Lpart = 0.5 * (norm(e02) + norm(e03));
+        else
+            Lpart = L*L/(A0+A1);*/
         F<F<double> > Lpart = pow(L, 1.0/3.0);
         //F<F<double> > anglepart = acos(costheta)*acos(costheta);
         F<F<double> > anglepart = pow(acos(costheta), 7.0/3.0);
         F<F<double> > stencilf = Lpart*anglepart;
-
         f += stencilf.val().val();
+        assert(!isnan(f));
         for(int i=0; i<4; i++)
         {
             for(int j=0; j<3; j++)
@@ -394,7 +469,6 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
 
     int numconstraints = 0;
     // coupling constraints between edge lengths
-    //numconstraints += mesh_.n_edges();
     for(int i=0; i<(int)mesh_.n_edges(); i++)
     {
         if(!mesh_.is_boundary(mesh_.edge_handle(i)))
@@ -521,220 +595,105 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
     assert((int)Hg.size() == numconstraints);
 }
 
-
-bool DevTLNP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style)
+void DevelopableMesh::buildInversionConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &h, std::vector<T> &Dh, std::vector<std::vector<T> > &Hh)
 {
-    double f;
-    VectorXd Df;
-    vector<T> Hf;
-    dm_.buildObjective(startq_, f, Df, Hf);
-    n = startq_.size();
-    nnz_h_lag = Hf.size();
+    int f = 0;
+    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
+        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
+            f++;
+    h.resize(f);
+    h.setZero();
+    Dh.clear();
+    Hh.clear();
 
-    VectorXd g;
-    vector<T> Dg;
-    vector<vector<T> > Hg;
-    dm_.buildConstraints(startq_, g, Dg, Hg);
-    m = g.size();
-    nnz_jac_g = Dg.size();
+    int offset = 3*mesh_.n_vertices();
 
-    for(int i=0; i<(int)Hg.size(); i++)
-        nnz_h_lag += Hg[i].size();
-
-    index_style = C_STYLE;
-
-    return true;
-}
-
-bool DevTLNP::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number *x_u, Ipopt::Index m, Ipopt::Number *g_l, Ipopt::Number *g_u)
-{
-    for(int i=0; i<n; i++)
+    int row = 0;
+    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
     {
-        x_l[i] = -std::numeric_limits<double>::infinity();
-        x_u[i] = std::numeric_limits<double>::infinity();
-    }
-
-    for(int i=0; i<m; i++)
-    {
-        g_l[i] = 0;
-        g_u[i] = 0;
-    }
-
-    return true;
-}
-
-bool DevTLNP::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number *x, bool init_z, Ipopt::Number *, Ipopt::Number *, Ipopt::Index , bool init_lambda, Ipopt::Number *)
-{
-    assert(init_x == true);
-    assert(init_z == false);
-    assert(init_lambda == false);
-
-    for(int i=0; i<n; i++)
-        x[i] = startq_[i];
-
-    return true;
-}
-
-bool DevTLNP::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number &obj_value)
-{
-    VectorXd q(n);
-    for(int i=0; i<n; i++)
-    {
-        q[i] = x[i];
-    }
-    double f;
-    VectorXd dummy;
-    vector<T> dummyM;
-    dm_.buildObjective(q, f, dummy, dummyM);
-    obj_value = f;
-
-    return true;
-}
-
-bool DevTLNP::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number *grad_f)
-{
-    VectorXd q(n);
-    for(int i=0; i<n; i++)
-    {
-        q[i] = x[i];
-    }
-    double f;
-    VectorXd Df;
-    vector<T> dummyM;
-    dm_.buildObjective(q, f, Df, dummyM);
-    for(int i=0; i<n; i++)
-        grad_f[i] = Df[i];
-
-    return true;
-}
-
-bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index m, Ipopt::Number *g)
-{
-    VectorXd q(n);
-    for(int i=0; i<n; i++)
-    {
-        q[i] = x[i];
-    }
-    VectorXd Vg;
-    vector<T> dummyM;
-    vector<vector<T> > dummyH;
-    dm_.buildConstraints(q, Vg, dummyM, dummyH);
-    for(int i=0; i<m; i++)
-        g[i] = Vg[i];
-
-    return true;
-}
-
-bool DevTLNP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index, Ipopt::Index nele_jac, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
-{
-    if(iRow != NULL && jCol != NULL)
-    {
-        VectorXd g;
-        vector<T> Dg;
-        vector<vector<T> > Hg;
-        dm_.buildConstraints(startq_, g, Dg, Hg);
-        assert(nele_jac == (int)Dg.size());
-        for(int i=0; i<nele_jac; i++)
+        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
         {
-            iRow[i] = Dg[i].row();
-            jCol[i] = Dg[i].col();
-        }
-    }
-    else
-    {
-        VectorXd q(n);
-        for(int i=0; i<n; i++)
-            q[i] = x[i];
+            OMMesh::HalfedgeHandle heh1 = fhi.handle();
+            OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
+            int centv = material_->getMesh().to_vertex_handle(heh1).idx();
+            assert(centv == material_->getMesh().from_vertex_handle(heh2).idx());
+            int v1 = material_->getMesh().from_vertex_handle(heh1).idx();
+            int v2 = material_->getMesh().to_vertex_handle(heh2).idx();
+            Vector2d e1 = q.segment<2>(offset+2*v1) - q.segment<2>(offset+2*centv);
+            Vector2d e2 = q.segment<2>(offset+2*v2) - q.segment<2>(offset+2*centv);
+            Vector2d emid = q.segment<2>(offset+2*v2) - q.segment<2>(offset+2*v1);
+            h[row] = -e1[0]*e2[1] + e1[1]*e2[0];
+            Dh.push_back(T(row, offset+2*v1, -e2[1]));
+            Dh.push_back(T(row, offset+2*v1+1, e2[0]));
+            Dh.push_back(T(row, offset+2*v2, e1[1]));
+            Dh.push_back(T(row, offset+2*v2+1, -e1[0]));
+            Dh.push_back(T(row, offset+2*centv, emid[1]));
+            Dh.push_back(T(row, offset+2*centv+1, -emid[0]));
+            vector<T> Hhpart;
+            if(2*v1 <= 2*v2+1)
+                Hhpart.push_back(T(offset+2*v1, offset+2*v2+1, -1.0));
+            else
+                Hhpart.push_back(T(offset+2*v2+1, offset+2*v1, -1.0));
 
-        VectorXd g;
-        vector<T> Dg;
-        vector<vector<T> > Hg;
-        dm_.buildConstraints(q, g, Dg, Hg);
-        assert(nele_jac == (int)Dg.size());
-        for(int i=0; i<nele_jac; i++)
-            values[i] = Dg[i].value();
-    }
+            if(2*v1+1 <= 2*v2)
+                Hhpart.push_back(T(offset+2*v1+1, offset+2*v2, 1.0));
+            else
+                Hhpart.push_back(T(offset+2*v2, offset+2*v1+1, 1.0));
 
-    return true;
-}
+            if(2*v1 <= 2*centv+1)
+                Hhpart.push_back(T(offset+2*v1, offset+2*centv+1, 1.0));
+            else
+                Hhpart.push_back(T(offset+2*centv+1, offset+2*v1, 1.0));
 
-bool DevTLNP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number *lambda, bool , Ipopt::Index nele_hess, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
-{
-    if(iRow != NULL && jCol != NULL)
-    {
-        double f;
-        VectorXd Df;
-        vector<T> Hf;
-        dm_.buildObjective(startq_, f, Df, Hf);
-        VectorXd g;
-        vector<T> Dg;
-        vector<vector<T> > Hg;
-        dm_.buildConstraints(startq_, g, Dg, Hg);
-        assert((int)Hg.size() == m);
+            if(2*v1+1 <= 2*centv)
+                Hhpart.push_back(T(offset+2*v1+1, offset+2*centv, -1.0));
+            else
+                Hhpart.push_back(T(offset+2*centv, offset+2*v1+1, -1.0));
 
-        int row=0;
-        for(int i=0; i<(int)Hf.size(); i++)
-        {
-            iRow[row] = Hf[i].row();
-            jCol[row] = Hf[i].col();
+            if(2*v2 <= 2*centv+1)
+                Hhpart.push_back(T(offset+2*v2, offset+2*centv+1, -1.0));
+            else
+                Hhpart.push_back(T(offset+2*centv+1, offset+2*v2, -1.0));
+
+            if(2*v2+1 <= 2*centv)
+                Hhpart.push_back(T(offset+2*v2+1, offset+2*centv, 1.0));
+            else
+                Hhpart.push_back(T(offset+2*centv, offset+2*v2+1, 1.0));
+            Hh.push_back(Hhpart);
             row++;
         }
-        for(int i=0; i<(int)Hg.size(); i++)
-        {
-            for(int j=0; j<(int)Hg[i].size(); j++)
-            {
-                iRow[row] = Hg[i][j].row();
-                jCol[row] = Hg[i][j].col();
-                row++;
-            }
-        }
-        assert(row == nele_hess);
     }
-    else
-    {
-        VectorXd q(n);
-        for(int i=0; i<n; i++)
-            q[i] = x[i];
-        double f;
-        VectorXd Df;
-        vector<T> Hf;
-        dm_.buildObjective(q, f, Df, Hf);
-        int row=0;
-        for(int i=0; i<(int)Hf.size(); i++)
-        {
-            values[row] = obj_factor * Hf[i].value();
-            row++;
-        }
-
-        VectorXd g;
-        vector<T> Dg;
-        vector<vector<T> > Hg;
-        dm_.buildConstraints(q, g, Dg, Hg);
-        for(int i=0; i<(int)Hg.size(); i++)
-        {
-            for(int j=0; j<(int)Hg[i].size(); j++)
-            {
-                values[row] = lambda[i]*Hg[i][j].value();
-                row++;
-            }
-        }
-        assert(row == nele_hess);
-    }
-
-    return true;
+    assert(row == (int)h.size());
+    assert(row == (int)Hh.size());
 }
 
-void DevTLNP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Index m, const Ipopt::Number *g, const Ipopt::Number *, Ipopt::Number obj_value, const Ipopt::IpoptData *, Ipopt::IpoptCalculatedQuantities *)
+void DevelopableMesh::checkInversion(const Eigen::VectorXd &q)
 {
-    cout << "Status: " << status << endl;
+    int n = mesh_.n_vertices();
+    int matoffset = 3*n;
+    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
+    {
+        OMMesh::FaceHandle fh = material_->getMesh().face_handle(i);
+        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fh); fhi; ++fhi)
+        {
+            OMMesh::HalfedgeHandle heh1 = fhi.handle();
+            OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
+            int centv = material_->getMesh().to_vertex_handle(heh1).idx();
+            int v1 = material_->getMesh().from_vertex_handle(heh1).idx();
+            int v2 = material_->getMesh().to_vertex_handle(heh2).idx();
+            Vector2d e1 = q.segment<2>(matoffset + 2*v1) - q.segment<2>(matoffset+2*centv);
+            Vector2d e2 = q.segment<2>(matoffset + 2*v2) - q.segment<2>(matoffset+2*centv);
+            double cr = e1[0]*e2[1]-e1[1]*e2[0];
+            if(cr > 0)
+                cout << "Triangle Inversion" << endl;
+        }
+    }
 
-    for(int i=0; i<n; i++)
-        startq_[i] = x[i];
-
-    double viol = 0.0;
-    for(int i=0; i<m; i++)
-        viol += g[i]*g[i];
-    cout << "Constraint violation " << sqrt(viol) << endl;
-
-    cout << "Objective value " << obj_value << endl;
+    for(int i=0; i<(int)material_->getMesh().n_edges(); i++)
+    {
+        OMMesh::EdgeHandle eh = material_->getMesh().edge_handle(i);
+        double len = material_->getMesh().calc_edge_length(eh);
+        if(len < 1e-6)
+            cout << "Collapsed edge" << endl;
+    }
 }
