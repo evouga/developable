@@ -23,7 +23,8 @@ SOURCES += main.cpp \
     controller.cpp \
     developablemesh.cpp \
     schwarzdialog.cpp \
-    devnlp.cpp
+    devnlp.cpp \
+    glwidget2d.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -38,7 +39,8 @@ HEADERS += \
     developablemesh.h \
     schwarzdialog.h \
     devnlp.h \
-    autodiffTemplates.h
+    autodiffTemplates.h \
+    glwidget2d.h
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.2/lib -lipopt -L/home/etienne/wsmp/wsmp-Linux32/lib/GNU -lwsmp -lgfortran -lblas -llapack
 
@@ -55,6 +57,8 @@ QMAKE_CXXFLAGS += -g
 FORMS += \
     mainwindow.ui \
     schwarzdialog.ui
+
+
 
 
 

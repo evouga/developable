@@ -26,6 +26,7 @@ void MainWindow::setController(Controller &cont)
 {
     cont_ = &cont;
     ui->GLwidget->setController(cont);
+    ui->GLwidget2D->setController(cont);
 }
 
 string MainWindow::launchMeshOpenDialog()
@@ -54,6 +55,7 @@ void MainWindow::showError(const string &error)
 void MainWindow::centerCamera()
 {
     ui->GLwidget->centerCamera();
+    ui->GLwidget2D->centerCamera();
 }
 
 
@@ -86,6 +88,7 @@ bool MainWindow::smoothShade() const
 void MainWindow::updateGL()
 {
     ui->GLwidget->updateGL();
+    ui->GLwidget2D->updateGL();
 }
 
 void MainWindow::on_actionExit_triggered()

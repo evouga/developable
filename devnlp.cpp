@@ -110,7 +110,7 @@ bool DevTLNP::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::
     return true;
 }
 
-bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index m, Ipopt::Number *g)
+bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index , Ipopt::Number *g)
 {
     VectorXd q(n);
     for(int i=0; i<n; i++)
@@ -133,7 +133,7 @@ bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index
     return true;
 }
 
-bool DevTLNP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index, Ipopt::Index nele_jac, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
+bool DevTLNP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index, Ipopt::Index , Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
 {
     if(iRow != NULL && jCol != NULL)
     {

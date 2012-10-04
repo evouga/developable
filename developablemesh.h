@@ -52,6 +52,10 @@ public:
     void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, std::vector<std::vector<T> > &Hg);
     void buildInversionConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &h, std::vector<T> &Dh, std::vector<std::vector<T> > &Hh);
 
+    Eigen::Vector2d materialCenter();
+    double materialRadius();
+    void renderMaterial();
+
 private:
     DevelopableMesh(const DevelopableMesh &other);
     DevelopableMesh &operator=(const DevelopableMesh &other);

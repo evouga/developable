@@ -8,6 +8,7 @@
 #include <fadiff.h>
 #include "coin/IpIpoptApplication.hpp"
 #include "devnlp.h"
+#include <QGLWidget>
 
 using namespace std;
 using namespace Eigen;
@@ -261,7 +262,7 @@ void DevelopableMesh::deformLantern(int maxiters)
     IpoptApplication app;
     app.Options()->SetNumericValue("tol", 1e-9);
     //app.Options()->SetStringValue("mu_strategy", "adaptive");
-    //app.Options()->SetStringValue("derivative_test", "second-order");
+//    app.Options()->SetStringValue("derivative_test", "second-order");
     app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
     app.Initialize();
     app.OptimizeTNLP(mynlp);
@@ -671,7 +672,7 @@ void DevelopableMesh::checkInversion(const Eigen::VectorXd &q)
 {
     int n = mesh_.n_vertices();
     int matoffset = 3*n;
-    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
+    /*for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
     {
         OMMesh::FaceHandle fh = material_->getMesh().face_handle(i);
         for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fh); fhi; ++fhi)
@@ -687,13 +688,63 @@ void DevelopableMesh::checkInversion(const Eigen::VectorXd &q)
             if(cr > 0)
                 cout << "Triangle Inversion" << endl;
         }
-    }
+    }*/
 
+    double minlength = std::numeric_limits<double>::infinity();
     for(int i=0; i<(int)material_->getMesh().n_edges(); i++)
     {
         OMMesh::EdgeHandle eh = material_->getMesh().edge_handle(i);
-        double len = material_->getMesh().calc_edge_length(eh);
-        if(len < 1e-6)
-            cout << "Collapsed edge" << endl;
+        OMMesh::HalfedgeHandle heh = material_->getMesh().halfedge_handle(eh,0);
+        int v1 = material_->getMesh().to_vertex_handle(heh).idx();
+        int v2 = material_->getMesh().from_vertex_handle(heh).idx();
+        Vector2d vv1 = q.segment<2>(matoffset+2*v1);
+        Vector2d vv2 = q.segment<2>(matoffset+2*v2);
+        double len = (vv1-vv2).norm();
+        minlength = min(minlength, len);
     }
+    if(minlength < 1e-6)
+        cout << "Edge collapse" << endl;
+}
+
+Vector2d DevelopableMesh::materialCenter()
+{
+    Vector2d result(0,0);
+    for(int i=0; i<(int)material_->getMesh().n_vertices(); i++)
+    {
+        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(i);
+        OMMesh::Point pt = material_->getMesh().point(vh);
+        result[0] += pt[0];
+        result[1] += pt[1];
+    }
+    result /= material_->getMesh().n_vertices();
+    return result;
+}
+
+double DevelopableMesh::materialRadius()
+{
+    Vector2d center = materialCenter();
+    double maxradius = 0;
+    for(int i=0; i<(int)material_->getMesh().n_vertices(); i++)
+    {
+        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(i);
+        OMMesh::Point pt = material_->getMesh().point(vh);
+        Vector2d vpt(pt[0],pt[1]);
+        maxradius = max(maxradius, (center-vpt).norm());
+    }
+    return maxradius;
+}
+
+void DevelopableMesh::renderMaterial()
+{
+    glBegin(GL_LINES);
+    for(int i=0; i<(int)material_->getMesh().n_edges(); i++)
+    {
+        OMMesh::EdgeHandle eh = material_->getMesh().edge_handle(i);
+        OMMesh::HalfedgeHandle heh = material_->getMesh().halfedge_handle(eh, 0);
+        OMMesh::Point pt1 = material_->getMesh().point(material_->getMesh().to_vertex_handle(heh));
+        OMMesh::Point pt2 = material_->getMesh().point(material_->getMesh().from_vertex_handle(heh));
+        glVertex2d(pt1[0], pt1[1]);
+        glVertex2d(pt2[0], pt2[1]);
+    }
+    glEnd();
 }

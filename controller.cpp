@@ -26,6 +26,11 @@ void Controller::renderMesh()
     m_.render(showWireframe, smoothShade);
 }
 
+void Controller::renderMaterial()
+{
+    m_.renderMaterial();
+}
+
 void Controller::loadOBJ()
 {
     string filename = mw_.launchMeshOpenDialog();
@@ -41,6 +46,12 @@ void Controller::getSceneBounds(Eigen::Vector3d &center, double &radius)
     radius = m_.radius();
 }
 
+void Controller::getMaterialBounds(Eigen::Vector2d &center, double &radius)
+{
+    center = m_.materialCenter();
+    radius = m_.materialRadius();
+}
+
 void Controller::newSchwarzLantern()
 {
  //   double r = 1.0;
@@ -52,6 +63,7 @@ void Controller::newSchwarzLantern()
     double angle = -6.28319;
     mw_.launchSchwarzLanternDialog(r, h, n, m, angle);
     m_.buildSchwarzLantern(r, h, n, m, angle);
+    mw_.centerCamera();
 }
 
 void Controller::deformLantern()

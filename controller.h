@@ -12,9 +12,11 @@ public:
     Controller(MainWindow &mw);
 
     void renderMesh();
+    void renderMaterial();
     void quit();
     void loadOBJ();
     void getSceneBounds(Eigen::Vector3d &center, double &radius);
+    void getMaterialBounds(Eigen::Vector2d &center, double &radius);
     void newSchwarzLantern();
     void deformLantern();
     void updateLanternHeight(double newheight);
