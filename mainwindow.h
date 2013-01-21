@@ -29,7 +29,8 @@ public:
     void centerCamera();
     bool showWireframe() const;
     bool smoothShade() const;
-\
+    void repaintMesh();
+
 private slots:
     void on_actionExit_triggered();
 
@@ -47,9 +48,10 @@ private slots:
 
     void on_optimizeButton_clicked();
 
+    void on_actionExport_OBJ_triggered();
+
 private:
     void updateGL();
-
     Ui::MainWindow *ui;
     Controller *cont_;
 };

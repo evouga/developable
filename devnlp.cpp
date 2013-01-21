@@ -1,10 +1,12 @@
 #include "devnlp.h"
 #include "developablemesh.h"
+#include "coin/IpOrigIpoptNLP.hpp"
+#include "coin/IpIpoptCalculatedQuantities.hpp"
+#include "coin/IpTNLPAdapter.hpp"
+#include "coin/IpIpoptData.hpp"
 
 using namespace Eigen;
 using namespace std;
-
-
 
 bool DevTLNP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style)
 {
@@ -272,17 +274,36 @@ bool DevTLNP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Numbe
     return true;
 }
 
-void DevTLNP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Index m, const Ipopt::Number *g, const Ipopt::Number *, Ipopt::Number obj_value, const Ipopt::IpoptData *, Ipopt::IpoptCalculatedQuantities *)
+void DevTLNP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Index, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Number, const Ipopt::IpoptData *, Ipopt::IpoptCalculatedQuantities *)
 {
     cout << "Status: " << status << endl;
 
     for(int i=0; i<n; i++)
         startq_[i] = x[i];
+}
 
-    double viol = 0.0;
-    for(int i=0; i<m; i++)
-        viol += g[i]*g[i];
-    cout << "Constraint violation " << sqrt(viol) << endl;
+bool DevTLNP::intermediate_callback(Ipopt::AlgorithmMode , Ipopt::Index , Ipopt::Number , Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Index, const Ipopt::IpoptData *ip_data, Ipopt::IpoptCalculatedQuantities *ip_cq)
+{
+    assert(ip_cq);
+    Ipopt::OrigIpoptNLP *orignlp = dynamic_cast<Ipopt::OrigIpoptNLP*>(GetRawPtr(ip_cq->GetIpoptNLP()));
+    if(!orignlp)
+    {
+        return true;
+    }
+    Ipopt::TNLPAdapter *tnlp_adapter = dynamic_cast<Ipopt::TNLPAdapter*>(GetRawPtr(orignlp->nlp()));
+    assert(tnlp_adapter);
 
-    cout << "Objective value " << obj_value << endl;
+    double *x = new double[startq_.size()];
+    tnlp_adapter->ResortX(*ip_data->curr()->x(), x);
+    Eigen::VectorXd q(startq_.size());
+    for(int i=0; i<(int)startq_.size(); i++)
+        q[i] = x[i];
+    delete[] x;
+
+    dm_.repopulateDOFs(q);
+    dc_.repaintCallback();
+
+    if(dm_.shouldCollapseEdges(q))
+        return false;
+    return true;
 }

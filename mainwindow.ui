@@ -171,6 +171,7 @@
     </property>
     <addaction name="actionReset_Camera"/>
     <addaction name="actionTake_Screenshot"/>
+    <addaction name="actionExport_OBJ"/>
    </widget>
    <addaction name="menuVViewer"/>
    <addaction name="menuView"/>
@@ -199,6 +200,11 @@
   <action name="actionSchwarz_Lantern">
    <property name="text">
     <string>Schwarz Lantern</string>
+   </property>
+  </action>
+  <action name="actionExport_OBJ">
+   <property name="text">
+    <string>Export 3D Mesh</string>
    </property>
   </action>
  </widget>

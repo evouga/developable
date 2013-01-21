@@ -5,6 +5,7 @@
 #include <cassert>
 #include <iomanip>
 #include <sstream>
+#include <QMessageBox>
 
 using namespace std;
 using namespace Eigen;
@@ -70,9 +71,28 @@ void Controller::deformLantern()
 {
     for(int i=0; i<1; i++)
     {
-        m_.deformLantern(50);
+        m_.deformLantern(*this);
         stringstream ss;
         ss << "frame_" << setfill('0') << setw(6) << i << ".png";
         mw_.saveScreenshot(ss.str());
+    }
+}
+
+void Controller::repaintCallback()
+{
+    static int frame=1;
+    stringstream fname;
+    fname << "frame" << setw(6) << setfill('0') << frame++ << ".png";
+    mw_.repaintMesh();
+    mw_.saveScreenshot(fname.str());
+}
+
+void Controller::exportOBJ(const char *filename)
+{
+    if(!m_.exportOBJ(filename))
+    {
+        QString msg = "Couldn't write file " + QString(filename) + ". Save failed.";
+        QMessageBox::warning(&mw_, "Couldn't Write File", msg, QMessageBox::Ok);
+        return;
     }
 }

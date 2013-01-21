@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QDateTime>
 #include "schwarzdialog.h"
+#include <QPixmap>
 
 using namespace std;
 
@@ -70,9 +71,11 @@ void MainWindow::saveScreenshot()
 void MainWindow::saveScreenshot(const string &filename)
 {
     updateGL();
+    QPixmap p = QPixmap::grabWidget(this);
     QString curdir = QDir::currentPath();
     string fullname = string(curdir.toAscii()) + "/output/" + filename;
-    ui->GLwidget->saveScreenshot(fullname);
+    p.save(QString::fromUtf8(fullname.c_str()));
+    //ui->GLwidget->saveScreenshot(fullname);
 }
 
 bool MainWindow::showWireframe() const
@@ -83,6 +86,11 @@ bool MainWindow::showWireframe() const
 bool MainWindow::smoothShade() const
 {
     return ui->smoothShadeCheckBox->isChecked();
+}
+
+void MainWindow::repaintMesh()
+{
+    updateGL();
 }
 
 void MainWindow::updateGL()
@@ -135,4 +143,22 @@ void MainWindow::on_optimizeButton_clicked()
 {
     cont_->deformLantern();
     updateGL();
+}
+
+void MainWindow::on_actionExport_OBJ_triggered()
+{
+    QFileDialog savedialog(this, "Export 3D Geometry", ".", "Mesh Files (*.obj)");
+    savedialog.setFileMode(QFileDialog::AnyFile);
+    savedialog.setDefaultSuffix("obj");
+    savedialog.setViewMode(QFileDialog::List);
+    savedialog.setAcceptMode(QFileDialog::AcceptSave);
+    if(savedialog.exec())
+    {
+        QStringList filenames = savedialog.selectedFiles();
+        if(filenames.size() > 0)
+        {
+            QString filename = filenames[0];
+            cont_->exportOBJ(filename.toStdString().c_str());
+        }
+    }
 }

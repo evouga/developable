@@ -6,7 +6,7 @@
 
 class MainWindow;
 
-class Controller
+class Controller : public DeformCallback
 {
 public:
     Controller(MainWindow &mw);
@@ -20,6 +20,11 @@ public:
     void newSchwarzLantern();
     void deformLantern();
     void updateLanternHeight(double newheight);
+    void exportOBJ(const char *filename);
+
+    // Callback during solve
+
+    virtual void repaintCallback();
 
 private:
     MainWindow &mw_;

@@ -15,6 +15,8 @@ public:
     Mesh();
     virtual ~Mesh();
 
+    bool exportOBJ(const char *filename);
+
     virtual bool loadMesh(const std::string &filename);
     OMMesh &getMesh() {return mesh_;}
     const OMMesh &getMesh() const {return mesh_;}
@@ -30,6 +32,10 @@ public:
     double faceArea(int fidx) const;
 
     int findEdge(int vid1, int vid2);
+    int findHalfedge(int vid1, int vid2);
+    virtual double edgeLength(int vid1, int vid2);
+    double edgeLength(int eid);
+
 
 protected:
     OMMesh mesh_;

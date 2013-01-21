@@ -4,6 +4,8 @@
 #include "mainwindow.h"
 #include "controller.h"
 
+using namespace Eigen;
+
  int main(int argc, char *argv[])
  {
      QApplication app(argc, argv);

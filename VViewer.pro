@@ -24,7 +24,9 @@ SOURCES += main.cpp \
     developablemesh.cpp \
     schwarzdialog.cpp \
     devnlp.cpp \
-    glwidget2d.cpp
+    glwidget2d.cpp \
+    periodicmesh.cpp \
+    developablemesh-energies.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -40,11 +42,12 @@ HEADERS += \
     schwarzdialog.h \
     devnlp.h \
     autodiffTemplates.h \
-    glwidget2d.h
+    glwidget2d.h \
+    periodicmesh.h
 
-LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.2/lib -lipopt -L/home/etienne/wsmp/wsmp-Linux32/lib/GNU -lwsmp -lgfortran -lblas -llapack
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt -lcoinhsl -lgfortran -lblas -llapack
 
-INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.2/include
+INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.3/include
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework
@@ -52,11 +55,20 @@ macx {
     INCLUDEPATH += /opt/local/include
 }
 
+DEFINES += HAVE_CSTDDEF
+
 QMAKE_CXXFLAGS += -g
 
 FORMS += \
     mainwindow.ui \
     schwarzdialog.ui
+
+
+
+
+
+
+
 
 
 

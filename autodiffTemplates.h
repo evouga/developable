@@ -7,10 +7,24 @@ template<typename T> void diff(const T *vec1, const T *vec2, T *difference)
         difference[i] = vec1[i]-vec2[i];
 }
 
+template<typename T> void diff2D(const T *vec1, const T *vec2, T *difference)
+{
+    for(int i=0; i<2; i++)
+        difference[i] = vec1[i]-vec2[i];
+}
+
 template<typename T> T norm(const T *vec)
 {
     T result = 0;
     for(int i=0; i<3; i++)
+        result += vec[i]*vec[i];
+    return sqrt(result);
+}
+
+template<typename T> T norm2D(const T *vec)
+{
+    T result = 0;
+    for(int i=0; i<2; i++)
         result += vec[i]*vec[i];
     return sqrt(result);
 }
@@ -33,6 +47,14 @@ template<typename T> T dot(const T *vec1, const T *vec2)
 {
     T result = 0;
     for(int i=0; i<3; i++)
+        result += vec1[i]*vec2[i];
+    return result;
+}
+
+template<typename T> T dot2D(const T *vec1, const T *vec2)
+{
+    T result = 0;
+    for(int i=0; i<2; i++)
         result += vec1[i]*vec2[i];
     return result;
 }
