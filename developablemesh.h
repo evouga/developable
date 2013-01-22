@@ -47,6 +47,8 @@ public:
     DevelopableMesh();
     ~DevelopableMesh();
 
+    enum CriticalPointType {CPT_INDETERMINATE, CPT_SADDLE, CPT_MAXIMUM, CPT_MINIMUM};
+
     void buildSchwarzLantern(double r, double h, int n, int m, double angle);
     virtual bool loadMesh(const std::string &filename);
 
@@ -83,7 +85,7 @@ private:
     double equalityConstraintViolation(const Eigen::VectorXd &q);
     int activeInequalityConstraints(const Eigen::VectorXd &q);
     void buildConstraintBasis(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &normalspace, std::vector<Eigen::VectorXd> &tangentspace);
-    void checkConstrainedHessian(const Eigen::VectorXd &q);
+    CriticalPointType checkConstrainedHessian(const Eigen::VectorXd &q);
 
     void flushOutNANs(const Eigen::VectorXd &q);
     bool hasNANs(const Eigen::VectorXd &v);

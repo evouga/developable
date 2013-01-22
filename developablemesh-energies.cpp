@@ -98,7 +98,10 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
         normalize(n0);
         normalize(n1);
         F<F<double> > costheta = dot(n0,n1);
-        F<F<double> > theta = acos(costheta-1e-8);
+        F<F<double> > n0crossn1[3];
+        cross(n0, n1, n0crossn1);
+        F<F<double> > sintheta = norm(n0crossn1);
+        F<F<double> > theta = atan2(sintheta,costheta);
 
         F<F<double> > Lpart = 0;
 

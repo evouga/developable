@@ -292,16 +292,19 @@ void DevelopableMesh::deformLantern(DeformCallback &dc)
         app.Initialize();
         ApplicationReturnStatus status = app.OptimizeTNLP(mynlp);
 
-        keepgoing = (status == User_Requested_Stop);
         q = mynlp->getFinalQ();
 
         flushOutNANs(q);
 
+        buildObjective(q, f, Df, Hf);
         inequalities = activeInequalityConstraints(q);
-        cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
+        cout << "Energy " << f << endl;
+        cout << "Equality violation: " << equalityConstraintViolation(q) << endl;
         cout << "Active inequality constraints: " << inequalities << endl;
 
-        checkConstrainedHessian(q);
+        CriticalPointType type = checkConstrainedHessian(q);
+
+        keepgoing = (status == User_Requested_Stop || type == CPT_SADDLE);
 
         int collapseid = findCollapsibleEdge(q);
 
@@ -675,7 +678,7 @@ void DevelopableMesh::buildConstraintBasis(const Eigen::VectorXd &q, std::vector
     }
 }
 
-void DevelopableMesh::checkConstrainedHessian(const Eigen::VectorXd &q)
+DevelopableMesh::CriticalPointType DevelopableMesh::checkConstrainedHessian(const Eigen::VectorXd &q)
 {
     vector<VectorXd> tspace;
     vector<VectorXd> nspace;
@@ -708,14 +711,27 @@ void DevelopableMesh::checkConstrainedHessian(const Eigen::VectorXd &q)
         if(evs[i] > mostpos)
             mostpos = evs[i];
     }
+
     if(mostneg < startneg && mostpos > startpos)
+    {
         std::cout << "Saddle Point, " << mostneg << " " << mostpos << std::endl;
+        return CPT_SADDLE;
+    }
     else if(mostneg < startneg)
+    {
         std::cout << "Maximum" << std::endl;
+        return CPT_MAXIMUM;
+    }
     else if(mostpos > startpos)
+    {
         std::cout << "Minimum" << std::endl;
+        return CPT_MINIMUM;
+    }
     else
+    {
         std::cout << "Singular" << std::endl;
+        return CPT_INDETERMINATE;
+    }
 }
 
 bool DevelopableMesh::hasNANs(const Eigen::VectorXd &v)
