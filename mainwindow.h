@@ -21,7 +21,8 @@ public:
 
     void setController(Controller &cont);
 
-    std::string launchMeshOpenDialog();
+    std::string launchSimulationOpenDialog();
+    std::string launchSimulationSaveDialog();
     void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle);
     void saveScreenshot();
     void saveScreenshot(const std::string &filename);
@@ -49,6 +50,8 @@ private slots:
     void on_optimizeButton_clicked();
 
     void on_actionExport_OBJ_triggered();
+
+    void on_actionSave_Simulation_triggered();
 
 private:
     void updateGL();

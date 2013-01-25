@@ -162,6 +162,7 @@
      <string>File</string>
     </property>
     <addaction name="actionLoad_OBJ"/>
+    <addaction name="actionSave_Simulation"/>
     <addaction name="actionExit"/>
     <addaction name="actionSchwarz_Lantern"/>
    </widget>
@@ -179,7 +180,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_OBJ">
    <property name="text">
-    <string>Load OBJ</string>
+    <string>Load Simulation</string>
    </property>
   </action>
   <action name="actionExit">
@@ -205,6 +206,11 @@
   <action name="actionExport_OBJ">
    <property name="text">
     <string>Export 3D Mesh</string>
+   </property>
+  </action>
+  <action name="actionSave_Simulation">
+   <property name="text">
+    <string>Save Simulation</string>
    </property>
   </action>
  </widget>

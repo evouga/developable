@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <QMessageBox>
+#include <fstream>
 
 using namespace std;
 using namespace Eigen;
@@ -32,13 +33,21 @@ void Controller::renderMaterial()
     m_.renderMaterial();
 }
 
-void Controller::loadOBJ()
+void Controller::loadSimulation()
 {
-    string filename = mw_.launchMeshOpenDialog();
-    if(!m_.loadMesh(filename))
-        mw_.showError(string("Couldn't open mesh file ") + filename);
+    string filename = mw_.launchSimulationOpenDialog();
+    ifstream ifs(filename.c_str());
+    if(!ifs || !m_.loadFromStream(ifs))
+        mw_.showError(string("Couldn't open simulation file ") + filename);
     mw_.centerCamera();
+}
 
+void Controller::saveSimulation()
+{
+    string filename = mw_.launchSimulationSaveDialog();
+    ofstream ofs(filename.c_str());
+    if(!ofs || !m_.saveToStream(ofs))
+        mw_.showError(string("Couldn't save simulation file ") + filename);
 }
 
 void Controller::getSceneBounds(Eigen::Vector3d &center, double &radius)

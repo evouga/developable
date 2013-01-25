@@ -9,6 +9,9 @@ class PeriodicMesh : public Mesh
 public:
     PeriodicMesh();
 
+    virtual bool loadFromStream(std::istream &is);
+    virtual bool saveToStream(std::ostream &os);
+
     void clearOffsets();
     void addOffset(OMMesh::HalfedgeHandle hei, const Eigen::Vector3d &offset);
     Eigen::Vector3d getOffset(OMMesh::HalfedgeHandle hei);

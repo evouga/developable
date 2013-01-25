@@ -4,32 +4,14 @@
 #include <Eigen/Geometry>
 #include <set>
 #include "coin/IpIpoptApplication.hpp"
-#include "devnlp.h"
+#include "staticsnlp.h"
 #include <QGLWidget>
 #include <Eigen/Dense>
+#include "mathutil.h"
 
-using namespace std;
 using namespace Eigen;
+using namespace std;
 using namespace Ipopt;
-
-const double PI = 3.1415926535898;
-
-
-void MaterialMesh::setMaterialEdge(int embeddedEdge, int materialEdge)
-{
-    assert(embeddedEdge != -1);
-    assert(materialEdge != -1);
-    embedge2matedge_[embeddedEdge] = materialEdge;
-}
-
-int MaterialMesh::materialEdge(int embeddedEdge)
-{
-    map<int, int>::iterator it = embedge2matedge_.find(embeddedEdge);
-    if(it != embedge2matedge_.end())
-        return it->second;
-    return -1;
-}
-
 
 DevelopableMesh::DevelopableMesh() : material_(new MaterialMesh(0))
 {
@@ -41,172 +23,82 @@ DevelopableMesh::~DevelopableMesh()
     delete material_;
 }
 
-bool DevelopableMesh::loadMesh(const string &)
+bool DevelopableMesh::saveToStream(std::ostream &os)
 {
-    assert(false);
-    return false;
+    if(!Mesh::saveToStream(os))
+    {
+        return false;
+    }
+    if(!material_->saveToStream(os))
+        return false;
+
+    int nboundaries = boundaries_.size();
+    writeInt(os, nboundaries);
+    for(int i=0; i<nboundaries; i++)
+    {
+        int nverts = boundaries_[i].bdryPos.size();
+        assert(nverts == (int)boundaries_[i].bdryVerts.size());
+        writeInt(os, nverts);
+        for(int j=0; j<nverts; j++)
+        {
+            writeInt(os, boundaries_[i].bdryVerts[j]);
+            Vector3d pos = boundaries_[i].bdryPos[j];
+            writeDouble(os, pos[0]);
+            writeDouble(os, pos[1]);
+            writeDouble(os, pos[2]);
+        }
+    }
+    return os;
 }
 
-void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, double angle)
+bool DevelopableMesh::loadFromStream(std::istream &is)
 {
-    mesh_ = OMMesh();
-    double alpha = angle;
-    double a = 2*r*sin(PI/n);
-    double b = sqrt(4*r*r*sin(alpha/2.0)*sin(alpha/2.0) + h*h/m/m);
-    double c = sqrt(4*r*r*sin(PI/n + alpha/2.0)*sin(PI/n + alpha/2.0) + h*h/m/m);
-    double costilt = (a*a+b*b-c*c)/(2*a*b);
-    double dpx = -b*costilt;
+    if(!Mesh::loadFromStream(is))
+    {
+        return false;
+    }
+    if(!material_->loadFromStream(is))
+    {
+        assert(false);
+        return false;
+    }
 
+    int nboundaries = readInt(is);
+    if(!is)
+    {
+        assert(false);
+        return false;
+    }
 
-    double s = 0.5*(a+b+c);
-    double area = sqrt(s*(s-a)*(s-b)*(s-c));
-    double dpy = 2*area/a;
-
-    double W = n*a;
-    double H = 2*n*m*area/W;
-
-    assert(fabs(H-dpy*m) < 1e-6);
-
-    delete material_;
-    material_ = new MaterialMesh(H);
     boundaries_.clear();
 
-    Boundary bottom, top;
-
-    for(int i=0; i<=m; i++)
+    for(int i=0; i<nboundaries; i++)
     {
-        double z = h*i/m;
-        double basepx = i*dpx;
-        double py = i*dpy;
-
-        for(int j=0; j<n; j++)
+        int nverts = readInt(is);
+        if(!is)
         {
-            double x = r*cos(2*PI*(j/double(n)) + i*alpha);
-            double y = r*sin(2*PI*(j/double(n)) + i*alpha);
-
-            OMMesh::Point newpt(x,y,z);
-            if(i == 0)
-            {
-                bottom.bdryVerts.push_back(mesh_.n_vertices());
-                bottom.bdryPos.push_back(Vector3d(x,y,z));
-            }
-            else if(i==m)
-            {
-                top.bdryVerts.push_back(mesh_.n_vertices());
-                top.bdryPos.push_back(Vector3d(x,y,z));
-            }
-            mesh_.add_vertex(newpt);
-
-            double px = j*a+basepx;
-            OMMesh::Point newmatpt(px,py,0);
-            if(i == 0 || i == m)
-            {
-                material_->getBoundaryVerts().push_back(pair<int, double>(material_->getMesh().n_vertices(), py));
-            }
-            material_->getMesh().add_vertex(newmatpt);
-
+            assert(false);
+            return false;
         }
-    }
-
-    boundaries_.push_back(bottom);
-    boundaries_.push_back(top);
-
-    for(int i=0; i<m; i++)
-    {
-        for(int j=0; j<n; j++)
+        Boundary newbd;
+        for(int j=0; j<nverts; j++)
         {
-            int fidx1 = i*n+j;
-            int fidx2 = i*n + ((j+1) % n);
-            int fidx3 = (i+1)*n+ ((j+1)%n);
-
-            vector<OMMesh::VertexHandle> newface;
-            vector<OMMesh::VertexHandle> newmatface;
-            newface.push_back(mesh_.vertex_handle(fidx1));
-            newface.push_back(mesh_.vertex_handle(fidx2));
-            newface.push_back(mesh_.vertex_handle(fidx3));
-            newmatface.push_back(material_->getMesh().vertex_handle(fidx1));
-            newmatface.push_back(material_->getMesh().vertex_handle(fidx2));
-            newmatface.push_back(material_->getMesh().vertex_handle(fidx3));
-
-            mesh_.add_face(newface);
-            material_->getMesh().add_face(newmatface);
-
-            if(j == n-1)
+            int vertid = readInt(is);
+            Vector3d pos;
+            pos[0] = readDouble(is);
+            pos[1] = readDouble(is);
+            pos[2] = readDouble(is);
+            cout << pos.transpose() << endl;
+            if(!is)
             {
-                // Wraps around
-                Vector3d offset(W,0,0);
-                int heid = material_->findHalfedge(fidx1, fidx2);
-                assert(heid >= 0);
-                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-                heid = material_->findHalfedge(fidx1, fidx3);
-                assert(heid >= 0);
-                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
+                 return false;
             }
-
-            material_->setMaterialEdge(findEdge(fidx1,fidx2), material_->findEdge(fidx1,fidx2));
-            material_->setMaterialEdge(findEdge(fidx2,fidx3), material_->findEdge(fidx2,fidx3));
-            material_->setMaterialEdge(findEdge(fidx3,fidx1), material_->findEdge(fidx3,fidx1));
-
-            fidx2 = fidx3;
-            newface[1] = mesh_.vertex_handle(fidx2);
-            newmatface[1] = material_->getMesh().vertex_handle(fidx2);
-            fidx3 = (i+1)*n + j;
-            newface[2] = mesh_.vertex_handle(fidx3);
-            newmatface[2] = material_->getMesh().vertex_handle(fidx3);
-            mesh_.add_face(newface);
-            material_->getMesh().add_face(newmatface);
-
-            if(j == n-1)
-            {
-                // Wraps around
-                Vector3d offset(W,0,0);
-                int heid = material_->findHalfedge(fidx1, fidx2);
-                assert(heid >= 0);
-                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-                heid = material_->findHalfedge(fidx3, fidx2);
-                assert(heid >= 0);
-                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-            }
-
-            material_->setMaterialEdge(findEdge(fidx1,fidx2), material_->findEdge(fidx1,fidx2));
-            material_->setMaterialEdge(findEdge(fidx2,fidx3), material_->findEdge(fidx2,fidx3));
-            material_->setMaterialEdge(findEdge(fidx3,fidx1), material_->findEdge(fidx3,fidx1));
-
+            newbd.bdryVerts.push_back(vertid);
+            newbd.bdryPos.push_back(pos);
         }
+        boundaries_.push_back(newbd);
     }
-
-    for(int i=0; i<(int)mesh_.n_edges(); i++)
-    {
-        double len1 = edgeLength(i);
-
-        int medge = material_->materialEdge(i);
-
-        double len2 = material_->edgeLength(medge);
-
-        assert(fabs(len1-len2) < 1e-6);
-    }
-
-    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
-    {
-        OMMesh::FaceHandle fh = material_->getMesh().face_handle(i);
-        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fh); fhi; ++fhi)
-        {
-            OMMesh::HalfedgeHandle heh = fhi.handle();
-            OMMesh::HalfedgeHandle nextheh = material_->getMesh().next_halfedge_handle(heh);
-            OMMesh::VertexHandle centv = material_->getMesh().to_vertex_handle(heh);
-            OMMesh::VertexHandle v1 = material_->getMesh().from_vertex_handle(heh);
-            OMMesh::VertexHandle v2 = material_->getMesh().to_vertex_handle(nextheh);
-
-            OMMesh::Point e0 = material_->getMesh().point(v1) - material_->getMesh().point(centv);
-            OMMesh::Point e1 = material_->getMesh().point(v2) - material_->getMesh().point(centv);
-            Vector3d ve0 = point2Vector(e0) - material_->getOffset(heh);
-            Vector3d ve1 = point2Vector(e1) + material_->getOffset(nextheh);
-            Vector3d cr = ve0.cross(ve1);
-            assert(cr[2] < 0);
-        }
-    }
-
-    centerCylinder();
+    return true;
 }
 
 Vector3d DevelopableMesh::point2Vector(OMMesh::Point pt)
@@ -282,13 +174,13 @@ void DevelopableMesh::deformLantern(DeformCallback &dc)
         vector<T> Hf;
         buildObjective(q, f, Df, Hf);
         cout << "Initial energy: " << f << endl;
-        DevTLNP *mynlp = new DevTLNP(*this, dc, q);
+        StaticsNLP *mynlp = new StaticsNLP(*this, dc, q);
         IpoptApplication app;
         app.Options()->SetNumericValue("tol", 1e-6);
         //app.Options()->SetStringValue("mu_strategy", "adaptive");
         //app.Options()->SetStringValue("derivative_test", "second-order");
         app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
-        //app.Options()->SetIntegerValue("print_level", 12);
+        //app.Options()->SetIntegerValue("print_level", 7);
         app.Initialize();
         ApplicationReturnStatus status = app.OptimizeTNLP(mynlp);
 
@@ -302,60 +194,35 @@ void DevelopableMesh::deformLantern(DeformCallback &dc)
         cout << "Equality violation: " << equalityConstraintViolation(q) << endl;
         cout << "Active inequality constraints: " << inequalities << endl;
 
-        CriticalPointType type = checkConstrainedHessian(q);
-
-        keepgoing = (status == User_Requested_Stop || type == CPT_SADDLE);
-
-        int collapseid = findCollapsibleEdge(q);
+        vector<VectorXd> negdirs;
+        CriticalPointType type = checkConstrainedHessian(q, negdirs);
+        keepgoing = false;
+        if(status == Solve_Succeeded && type == CPT_SADDLE)
+        {
+            keepgoing = true;
+            perturbConfiguration(q, negdirs, 1e-2);
+        }
 
         repopulateDOFs(q);
 
-        if(collapseid != -1)
+        if(status == User_Requested_Stop)
         {
-            assert(canCollapseEdge(collapseid));
-            collapseEdge(collapseid);
+            keepgoing = true;
+            int collapseid = findCollapsibleEdge(q);
+            if(collapseid != -1)
+            {
+                assert(canCollapseEdge(collapseid));
+                collapseEdge(collapseid);
+            }
         }
 
-        centerCylinder();
+        //centerCylinder();
     }
 }
 
 bool DevelopableMesh::shouldCollapseEdges(const Eigen::VectorXd &q)
 {
     return (findCollapsibleEdge(q) != -1);
-}
-
-int DevelopableMesh::findCollapsibleEdge(const Eigen::VectorXd &q)
-{
-    const double constrtol = 0.01;
-
-    for(OMMesh::HalfedgeIter hei = mesh_.halfedges_begin(); hei != mesh_.halfedges_end(); ++hei)
-    {
-        if(mesh_.is_boundary(hei.handle()))
-            continue;
-        double g;
-        vector<pair<int, double> > dummy1;
-        vector<T> dummy2;
-
-        int v1 = mesh_.from_vertex_handle(hei.handle()).idx();
-        int v2 = mesh_.to_vertex_handle(hei.handle()).idx();
-
-        int hidx = material_->findHalfedge(v1, v2);
-        assert(hidx != -1);
-
-        OMMesh::HalfedgeHandle heh1 = material_->getMesh().halfedge_handle(hidx);
-
-        radiusOverlapConstraint(q, heh1, g, dummy1, dummy2);
-
-        if(fabs(g) < constrtol)
-        {
-            int candidate = mesh_.edge_handle(mesh_.prev_halfedge_handle(hei.handle())).idx();
-            if(canCollapseEdge(candidate))
-                return candidate;
-        }
-    }
-
-    return -1;
 }
 
 Vector2d DevelopableMesh::materialCenter()
@@ -421,194 +288,12 @@ void DevelopableMesh::renderMaterial()
     glColor3f(1.0, 0.0, 0.0);
     for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
     {
-        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].first);
+        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].vertid);
         OMMesh::Point pt = material_->getMesh().point(vh);
         glVertex2d(pt[0], pt[1]);
     }
     glEnd();
     glPointSize(1.0);
-}
-
-void DevelopableMesh::collapseEdge(int eid)
-{
-    OMMesh::EdgeHandle eh = mesh_.edge_handle(eid);
-    OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(eh,0);
-    if(mesh_.is_boundary(mesh_.from_vertex_handle(heh)))
-        heh = mesh_.opposite_halfedge_handle(heh);
-    assert(!mesh_.is_boundary(mesh_.from_vertex_handle(heh)));
-
-    int v2 = mesh_.to_vertex_handle(heh).idx();
-    int v1 = mesh_.from_vertex_handle(heh).idx();
-
-    int mheid = material_->findHalfedge(v1, v2);
-    OMMesh::HalfedgeHandle mheh = material_->getMesh().halfedge_handle(mheid);
-    Vector3d deletedoffset = material_->getOffset(mheh);
-
-    vector<int> old2new;
-
-    OMMesh newmesh;
-    MaterialMesh *newmmesh = new MaterialMesh(material_->getH());
-
-    int mergedid = -1;
-    int newid = 0;
-    for(int i=0; i<(int)mesh_.n_vertices(); i++)
-    {
-        if(i == v1)
-        {
-            old2new.push_back(-1);
-            continue;
-        }
-        if(i == v2)
-        {
-            mergedid = newid;
-        }
-
-        old2new.push_back(newid++);
-        OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(i));
-        newmesh.add_vertex(pt);
-        OMMesh::Point mpt = material_->getMesh().point(material_->getMesh().vertex_handle(i));
-        newmmesh->getMesh().add_vertex(mpt);
-    }
-
-    old2new[v1] = mergedid;
-
-    // Fix boundary data
-    vector<Boundary> newbdries;
-    for(int i=0; i<(int)boundaries_.size(); i++)
-    {
-        bool seen = false;
-        Boundary newbd;
-        for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
-        {
-            if(boundaries_[i].bdryVerts[j] == v1 || boundaries_[i].bdryVerts[j] == v2)
-            {
-                if(seen)
-                    continue;
-                else
-                    seen = true;
-            }
-            newbd.bdryPos.push_back(boundaries_[i].bdryPos[j]);
-            newbd.bdryVerts.push_back(old2new[boundaries_[i].bdryVerts[j]]);
-        }
-        newbdries.push_back(newbd);
-    }
-
-    vector<pair<int, double> > newBdryVerts;
-    bool seen = false;
-    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
-    {
-        pair<int, double> entry = material_->getBoundaryVerts()[i];
-        if(entry.first == v1 || entry.first == v2)
-        {
-            if(seen)
-                continue;
-            else
-                seen = true;
-        }
-        newBdryVerts.push_back(pair<int, double>(old2new[entry.first], entry.second));
-        newmmesh->getBoundaryVerts() = newBdryVerts;
-    }
-
-    // ignored faces
-    int f1 = mesh_.face_handle(heh).idx();
-    int f2 = mesh_.opposite_face_handle(heh).idx();
-
-    for(int i=0; i<(int)mesh_.n_faces(); i++)
-    {
-        if(i == f1 || i == f2)
-            continue;
-        OMMesh::FaceHandle fh = mesh_.face_handle(i);
-        vector<OMMesh::VertexHandle> newface;
-        for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(fh); fvi; ++fvi)
-        {
-            int vid = fvi.handle().idx();
-            OMMesh::VertexHandle vh = newmesh.vertex_handle(old2new[vid]);
-            newface.push_back(vh);
-        }
-        newmesh.add_face(newface);
-        OMMesh::FaceHandle mfh = material_->getMesh().face_handle(i);
-        vector<OMMesh::VertexHandle> newmface;
-        for(OMMesh::FaceVertexIter fvi = material_->getMesh().fv_iter(mfh); fvi; ++fvi)
-        {
-            int vid = fvi.handle().idx();
-            OMMesh::VertexHandle vh = newmmesh->getMesh().vertex_handle(old2new[vid]);
-            newmface.push_back(vh);
-        }
-        newmmesh->getMesh().add_face(newmface);
-    }
-
-    // Reset edge map
-    for(OMMesh::EdgeIter ei = newmesh.edges_begin(); ei != newmesh.edges_end(); ++ei)
-    {
-        OMMesh::HalfedgeHandle heh = newmesh.halfedge_handle(ei.handle(), 0);
-        int v1 = newmesh.from_vertex_handle(heh).idx();
-        int v2 = newmesh.to_vertex_handle(heh).idx();
-        int meid = newmmesh->findEdge(v1,v2);
-        newmmesh->setMaterialEdge(ei.handle().idx(), meid);
-    }
-
-    // set edge offset (except v2's edges)
-    for(OMMesh::HalfedgeIter hei = material_->getMesh().halfedges_begin(); hei != material_->getMesh().halfedges_end(); ++hei)
-    {
-        int oldv1 = material_->getMesh().from_vertex_handle(hei.handle()).idx();
-        int oldv2 = material_->getMesh().to_vertex_handle(hei.handle()).idx();
-        if(oldv1 == v2 || oldv2 == v2)
-            continue;
-        int newv1 = old2new[oldv1];
-        int newv2 = old2new[oldv2];
-        int newheid = newmmesh->findHalfedge(newv1,newv2);
-        assert(newheid != -1);
-        OMMesh::HalfedgeHandle heh = newmmesh->getMesh().halfedge_handle(newheid);
-        newmmesh->addOffset(heh, material_->getOffset(hei.handle()));
-    }
-
-    // last order of business: fix the offsets of the edges coming off of v2
-    OMMesh::VertexHandle source = material_->getMesh().vertex_handle(v2);
-    for(OMMesh::VertexOHalfedgeIter voh = material_->getMesh().voh_iter(source); voh; ++voh)
-    {
-        int target = material_->getMesh().to_vertex_handle(voh.handle()).idx();
-        if(target == v1)
-            continue;
-        Vector3d newoffset = deletedoffset + material_->getOffset(voh.handle());
-        int newheid = newmmesh->findHalfedge(old2new[v1], old2new[target]);
-        assert(newheid != -1);
-        OMMesh::HalfedgeHandle newheh = newmmesh->getMesh().halfedge_handle(newheid);
-        newmmesh->addOffset(newheh, newoffset);
-    }
-
-    mesh_ = newmesh;
-    delete material_;
-    material_ = newmmesh;
-    boundaries_ = newbdries;
-}
-
-bool DevelopableMesh::canCollapseEdge(int eid)
-{
-    // Some sanity checks. First, the edge should not span the boundaries:
-    OMMesh::EdgeHandle eh = mesh_.edge_handle(eid);
-    OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(eh,0);
-    OMMesh::VertexHandle source = mesh_.from_vertex_handle(heh);
-    OMMesh::VertexHandle target = mesh_.to_vertex_handle(heh);
-
-    if(mesh_.is_boundary(source) && mesh_.is_boundary(target))
-        return false;
-
-    // Next, the source and target verts should have only two other verts in common (otherwise collapsed mesh is nonmanifold)
-    set<int> neighbors1;
-    for(OMMesh::VertexVertexIter vvi = mesh_.vv_iter(source); vvi; ++vvi)
-        neighbors1.insert(vvi.handle().idx());
-
-    int duplicates=0;
-    for(OMMesh::VertexVertexIter vvi = mesh_.vv_iter(target); vvi; ++vvi)
-    {
-        if(neighbors1.count(vvi.handle().idx()) > 0)
-            duplicates++;
-    }
-    if(duplicates != 2)
-        return false;
-
-    // we're ok
-    return true;
 }
 
 void DevelopableMesh::repopulateDOFs(const Eigen::VectorXd &q)
@@ -678,7 +363,7 @@ void DevelopableMesh::buildConstraintBasis(const Eigen::VectorXd &q, std::vector
     }
 }
 
-DevelopableMesh::CriticalPointType DevelopableMesh::checkConstrainedHessian(const Eigen::VectorXd &q)
+DevelopableMesh::CriticalPointType DevelopableMesh::checkConstrainedHessian(const Eigen::VectorXd &q, vector<VectorXd> &negdirs)
 {
     vector<VectorXd> tspace;
     vector<VectorXd> nspace;
@@ -694,18 +379,24 @@ DevelopableMesh::CriticalPointType DevelopableMesh::checkConstrainedHessian(cons
     vector<T> Hf;
     buildObjective(q, f, Df, Hf);
     SparseMatrix<double> sparse(q.size(), q.size());
-    sparse.setFromTriplets(Hf.begin(), Hf.end());
+    MathUtil::symmetricMatrixFromTriplets(Hf, sparse);
     MatrixXd constrainedH = Tan*sparse*Tan.transpose();
 
-    SelfAdjointEigenSolver<MatrixXd> es;
-    es.compute(constrainedH);
+    SelfAdjointEigenSolver<MatrixXd> es(constrainedH);
     VectorXd evs = es.eigenvalues();
     double mostneg = -1e-6;
     double mostpos = 1e-6;
     double startneg = mostneg;
     double startpos = mostpos;
+
+    negdirs.clear();
+
     for(int i=0; i<(int)evs.size(); i++)
     {
+        if(evs[i] < startneg)
+        {
+            negdirs.push_back(Tan.transpose()*es.eigenvectors().col(i));
+        }
         if(evs[i] < mostneg)
             mostneg = evs[i];
         if(evs[i] > mostpos)
@@ -734,52 +425,25 @@ DevelopableMesh::CriticalPointType DevelopableMesh::checkConstrainedHessian(cons
     }
 }
 
-bool DevelopableMesh::hasNANs(const Eigen::VectorXd &v)
-{
-    for(int i=0; i<(int)v.size(); i++)
-        if(isnan(v[i]))
-            return true;
-    return false;
-}
-
-bool DevelopableMesh::hasNANs(const std::vector<T> &M)
-{
-    for(int i=0; i<(int)M.size(); i++)
-        if(isnan(M[i].value()))
-            return true;
-    return false;
-}
-
-bool DevelopableMesh::hasNANs(const std::vector<std::vector<T> > &H)
-{
-    for(int i=0; i<(int)H.size(); i++)
-        for(int j=0; j<(int)H[i].size(); j++)
-        {
-            if(isnan(H[i][j].value()))
-                return true;
-        }
-    return false;
-}
-
 void DevelopableMesh::flushOutNANs(const Eigen::VectorXd &q)
 {
-    assert(!hasNANs(q));
+    assert(!MathUtil::hasNANs(q));
     double f;
     VectorXd Df;
     vector<T> Hf;
     buildObjective(q, f, Df, Hf);
     assert(!isnan(f));
-    assert(!hasNANs(Df));
-    assert(!hasNANs(Hf));
+    assert(!MathUtil::hasNANs(Df));
+    assert(!MathUtil::hasNANs(Hf));
 
     VectorXd g;
     vector<T> Dg;
     vector<vector<T> > Hg;
     buildConstraints(q, g, Dg, Hg);
 
-    assert(!hasNANs(g));
-    assert(!hasNANs(Dg));
-    assert(!hasNANs(Hg));
+    assert(!MathUtil::hasNANs(g));
+    assert(!MathUtil::hasNANs(Dg));
+    assert(!MathUtil::hasNANs(Hg));
 }
 
 double DevelopableMesh::equalityConstraintViolation(const Eigen::VectorXd &q)
@@ -789,4 +453,54 @@ double DevelopableMesh::equalityConstraintViolation(const Eigen::VectorXd &q)
     vector<vector<T> > Hg;
     buildConstraints(q, g, Dg, Hg);
     return g.norm();
+}
+
+void DevelopableMesh::perturbConfiguration(Eigen::VectorXd &q, const std::vector<VectorXd> &dirs, double mag)
+{
+    cout << "Perturbing along " << dirs.size() << " negative directions" << endl;
+    gatherInfo(q);
+
+    double oldf;
+    VectorXd Df;
+    vector<T> Hf;
+    buildObjective(q, oldf, Df, Hf);
+
+    VectorXd perturb(q.size());
+    perturb.setZero();
+
+    for(int i=0; i<(int)dirs.size(); i++)
+    {
+        perturb += dirs[i]*MathUtil::randomDouble(-1.0, 1.0);
+    }
+    double dt = mag;
+    perturb.normalize();
+    double f;
+    VectorXd newq;
+    do
+    {
+        newq = q + dt * perturb;
+        buildObjective(newq, f, Df, Hf);
+        dt *= 0.1;
+    }
+    while(f > oldf);
+    q = newq;
+    gatherInfo(q);
+}
+
+void DevelopableMesh::gatherInfo(const Eigen::VectorXd &q)
+{
+    double f;
+    VectorXd Df;
+    vector<T> Hf;
+    buildObjective(q, f, Df, Hf);
+
+    cout << "Current objective value: " << f << endl;
+    double ecv = equalityConstraintViolation(q);
+    int icv = activeInequalityConstraints(q);
+
+    cout << "Equality constraint violation: " << ecv << endl;
+    cout << icv << " inequality constraints are active" << endl;
+    vector<VectorXd> normalspace, tangentspace;
+    buildConstraintBasis(q, normalspace, tangentspace);
+    cout << "Tangent space is " << tangentspace.size() << " dimensional" << endl;
 }

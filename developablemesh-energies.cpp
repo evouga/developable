@@ -154,8 +154,8 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
             numconstraints++;
     }
 
-    // top and bottom verts have y values fixed
-    numconstraints += material_->getBoundaryVerts().size();
+    // top and bottom verts have x and y values fixed
+    numconstraints += 2*material_->getBoundaryVerts().size();
 
     // top and bottom of embedded cylinder have y values fixed
     for(int i=0; i<(int)boundaries_.size(); i++)
@@ -227,12 +227,15 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
 
     for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
     {
-        pair<int, double> vert = material_->getBoundaryVerts()[i];
-        g[row] = matq[2*vert.first+1] - vert.second;
-        Dg.push_back(T(row, 3*nembverts+2*vert.first+1, 1.0));
-        vector<T> Hgentry;
-        Hg.push_back(Hgentry);
-        row++;
+        for(int j=0; j<2; j++)
+        {
+            MaterialBoundary bdry = material_->getBoundaryVerts()[i];
+            g[row] = matq[2*bdry.vertid+j] - bdry.pos[j];
+            Dg.push_back(T(row, 3*nembverts+2*bdry.vertid+j, 1.0));
+            vector<T> Hgentry;
+            Hg.push_back(Hgentry);
+            row++;
+        }
     }
 
     for(int i=0; i<(int)boundaries_.size(); i++)

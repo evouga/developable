@@ -23,10 +23,14 @@ SOURCES += main.cpp \
     controller.cpp \
     developablemesh.cpp \
     schwarzdialog.cpp \
-    devnlp.cpp \
     glwidget2d.cpp \
     periodicmesh.cpp \
-    developablemesh-energies.cpp
+    developablemesh-energies.cpp \
+    developablemesh-topology.cpp \
+    mathutil.cpp \
+    materialmesh.cpp \
+    staticsnlp.cpp \
+    projectionnlp.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -40,10 +44,13 @@ HEADERS += \
     controller.h \
     developablemesh.h \
     schwarzdialog.h \
-    devnlp.h \
     autodiffTemplates.h \
     glwidget2d.h \
-    periodicmesh.h
+    periodicmesh.h \
+    mathutil.h \
+    materialmesh.h \
+    staticsnlp.h \
+    projectionnlp.h
 
 LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt -lcoinhsl -lgfortran -lblas -llapack
 
@@ -62,6 +69,21 @@ QMAKE_CXXFLAGS += -g
 FORMS += \
     mainwindow.ui \
     schwarzdialog.ui
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -8,7 +8,7 @@
 #include <Eigen/Sparse>
 #include <fadiff.h>
 #include "autodiffTemplates.h"
-#include "periodicmesh.h"
+#include "materialmesh.h"
 
 typedef Eigen::Triplet<double> T;
 
@@ -16,23 +16,6 @@ class DeformCallback
 {
 public:
     virtual void repaintCallback()=0;
-};
-
-class MaterialMesh : public PeriodicMesh
-{
-public:
-    MaterialMesh(double H) : H_(H) {}
-    double getH() {return H_;}
-
-    std::vector<std::pair<int, double> > &getBoundaryVerts() {return bdryverts_;}
-    int materialEdge(int embeddedEdge);
-
-    void setMaterialEdge(int embeddedEdge, int materialEdge);
-
-private:
-    double H_;
-    std::vector<std::pair<int, double> > bdryverts_;
-    std::map<int, int> embedge2matedge_;
 };
 
 struct Boundary
@@ -50,7 +33,8 @@ public:
     enum CriticalPointType {CPT_INDETERMINATE, CPT_SADDLE, CPT_MAXIMUM, CPT_MINIMUM};
 
     void buildSchwarzLantern(double r, double h, int n, int m, double angle);
-    virtual bool loadMesh(const std::string &filename);
+    virtual bool loadFromStream(std::istream &is);
+    virtual bool saveToStream(std::ostream &os);
 
     void deformLantern(DeformCallback &dc);
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
@@ -85,12 +69,11 @@ private:
     double equalityConstraintViolation(const Eigen::VectorXd &q);
     int activeInequalityConstraints(const Eigen::VectorXd &q);
     void buildConstraintBasis(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &normalspace, std::vector<Eigen::VectorXd> &tangentspace);
-    CriticalPointType checkConstrainedHessian(const Eigen::VectorXd &q);
+    CriticalPointType checkConstrainedHessian(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &negdirs);
+    void gatherInfo(const Eigen::VectorXd &q);
 
     void flushOutNANs(const Eigen::VectorXd &q);
-    bool hasNANs(const Eigen::VectorXd &v);
-    bool hasNANs(const std::vector<T> &M);
-    bool hasNANs(const std::vector<std::vector<T> > &H);
+    void perturbConfiguration(Eigen::VectorXd &q, const std::vector<Eigen::VectorXd> &dirs, double mag);
 };
 
 #endif // DEVELOPABLEMESH_H

@@ -1,4 +1,4 @@
-#include "devnlp.h"
+#include "staticsnlp.h"
 #include "developablemesh.h"
 #include "coin/IpOrigIpoptNLP.hpp"
 #include "coin/IpIpoptCalculatedQuantities.hpp"
@@ -8,7 +8,7 @@
 using namespace Eigen;
 using namespace std;
 
-bool DevTLNP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style)
+bool StaticsNLP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style)
 {
     double f;
     VectorXd Df;
@@ -40,7 +40,7 @@ bool DevTLNP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_j
     return true;
 }
 
-bool DevTLNP::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number *x_u, Ipopt::Index m, Ipopt::Number *g_l, Ipopt::Number *g_u)
+bool StaticsNLP::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number *x_u, Ipopt::Index m, Ipopt::Number *g_l, Ipopt::Number *g_u)
 {
     for(int i=0; i<n; i++)
     {
@@ -67,7 +67,7 @@ bool DevTLNP::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number 
     return true;
 }
 
-bool DevTLNP::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number *x, bool init_z, Ipopt::Number *, Ipopt::Number *, Ipopt::Index , bool init_lambda, Ipopt::Number *)
+bool StaticsNLP::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number *x, bool init_z, Ipopt::Number *, Ipopt::Number *, Ipopt::Index , bool init_lambda, Ipopt::Number *)
 {
     assert(init_x == true);
     assert(init_z == false);
@@ -79,7 +79,7 @@ bool DevTLNP::get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number *x, 
     return true;
 }
 
-bool DevTLNP::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number &obj_value)
+bool StaticsNLP::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number &obj_value)
 {
     VectorXd q(n);
     for(int i=0; i<n; i++)
@@ -95,7 +95,7 @@ bool DevTLNP::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Numbe
     return true;
 }
 
-bool DevTLNP::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number *grad_f)
+bool StaticsNLP::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number *grad_f)
 {
     VectorXd q(n);
     for(int i=0; i<n; i++)
@@ -112,7 +112,7 @@ bool DevTLNP::eval_grad_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::
     return true;
 }
 
-bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index , Ipopt::Number *g)
+bool StaticsNLP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index , Ipopt::Number *g)
 {
     VectorXd q(n);
     for(int i=0; i<n; i++)
@@ -135,7 +135,7 @@ bool DevTLNP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index
     return true;
 }
 
-bool DevTLNP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index, Ipopt::Index , Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
+bool StaticsNLP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Index, Ipopt::Index , Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
 {
     if(iRow != NULL && jCol != NULL)
     {
@@ -183,7 +183,7 @@ bool DevTLNP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::I
     return true;
 }
 
-bool DevTLNP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number *lambda, bool , Ipopt::Index nele_hess, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
+bool StaticsNLP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number *lambda, bool , Ipopt::Index nele_hess, Ipopt::Index *iRow, Ipopt::Index *jCol, Ipopt::Number *values)
 {
     if(iRow != NULL && jCol != NULL)
     {
@@ -274,7 +274,7 @@ bool DevTLNP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt::Numbe
     return true;
 }
 
-void DevTLNP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Index, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Number, const Ipopt::IpoptData *, Ipopt::IpoptCalculatedQuantities *)
+void StaticsNLP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, const Ipopt::Number *x, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Index, const Ipopt::Number *, const Ipopt::Number *, Ipopt::Number, const Ipopt::IpoptData *, Ipopt::IpoptCalculatedQuantities *)
 {
     cout << "Status: " << status << endl;
 
@@ -282,7 +282,7 @@ void DevTLNP::finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n, cons
         startq_[i] = x[i];
 }
 
-bool DevTLNP::intermediate_callback(Ipopt::AlgorithmMode , Ipopt::Index , Ipopt::Number , Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Index, const Ipopt::IpoptData *ip_data, Ipopt::IpoptCalculatedQuantities *ip_cq)
+bool StaticsNLP::intermediate_callback(Ipopt::AlgorithmMode , Ipopt::Index , Ipopt::Number , Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Number, Ipopt::Index, const Ipopt::IpoptData *ip_data, Ipopt::IpoptCalculatedQuantities *ip_cq)
 {
     assert(ip_cq);
     Ipopt::OrigIpoptNLP *orignlp = dynamic_cast<Ipopt::OrigIpoptNLP*>(GetRawPtr(ip_cq->GetIpoptNLP()));

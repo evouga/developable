@@ -1,5 +1,5 @@
-#ifndef DEVNLP_H
-#define DEVNLP_H
+#ifndef STATICSNLP_H
+#define STATICSNLP_H
 
 #include "coin/IpTNLP.hpp"
 #include <Eigen/Core>
@@ -10,10 +10,10 @@ typedef Eigen::Triplet<double> T;
 class DevelopableMesh;
 class DeformCallback;
 
-class DevTLNP : public Ipopt::TNLP
+class StaticsNLP : public Ipopt::TNLP
 {
 public:
-    DevTLNP(DevelopableMesh &dm, DeformCallback &dc, Eigen::VectorXd startq) : dm_(dm), dc_(dc), startq_(startq) {}
+    StaticsNLP(DevelopableMesh &dm, DeformCallback &dc, Eigen::VectorXd startq) : dm_(dm), dc_(dc), startq_(startq) {}
 
     virtual bool get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index &nnz_jac_g, Ipopt::Index &nnz_h_lag, IndexStyleEnum &index_style);
     virtual bool get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::Number *x_u, Ipopt::Index m, Ipopt::Number *g_l, Ipopt::Number *g_u);
@@ -48,4 +48,4 @@ private:
 };
 
 
-#endif // DEVNLP_H
+#endif // STATICSNLP_H

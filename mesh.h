@@ -17,7 +17,8 @@ public:
 
     bool exportOBJ(const char *filename);
 
-    virtual bool loadMesh(const std::string &filename);
+    virtual bool loadFromStream(std::istream &is);
+    virtual bool saveToStream(std::ostream &os);
     OMMesh &getMesh() {return mesh_;}
     const OMMesh &getMesh() const {return mesh_;}
     void render(bool showWireframe, bool smoothShade);
@@ -41,6 +42,10 @@ protected:
     OMMesh mesh_;
     void edgeEndpoints(OMMesh::EdgeHandle eh, OMMesh::Point &pt1, OMMesh::Point &pt2);
 
+    void writeInt(std::ostream &os, int i);
+    void writeDouble(std::ostream &os, double d);
+    int readInt(std::istream &is);
+    double readDouble(std::istream &is);
 
 private:
     Mesh(const Mesh &other);

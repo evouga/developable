@@ -2,6 +2,7 @@
 #include "mesh.h"
 #include <GL/glu.h>
 #include <Eigen/Dense>
+#include <vector>
 \
 using namespace std;
 using namespace Eigen;
@@ -16,9 +17,82 @@ Mesh::~Mesh()
     gluDeleteQuadric(quadric_);
 }
 
-bool Mesh::loadMesh(const string &filename)
+bool Mesh::saveToStream(std::ostream &os)
 {
-    return OpenMesh::IO::read_mesh(mesh_, filename);
+    int nverts = mesh_.n_vertices();
+    int nfaces = mesh_.n_faces();
+    writeInt(os, nverts);
+    for(int i=0; i<nverts; i++)
+    {
+        OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(i));
+        writeDouble(os, pt[0]);
+        writeDouble(os, pt[1]);
+        writeDouble(os, pt[2]);
+    }
+    writeInt(os, nfaces);
+    for(int i=0; i<nfaces; i++)
+    {
+        OMMesh::FaceHandle fh = mesh_.face_handle(i);
+        vector<int> nfverts;
+        for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(fh); fvi; ++fvi)
+            nfverts.push_back(fvi.handle().idx());
+        writeInt(os, (int)nfverts.size());
+        for(int j=0; j<(int)nfverts.size(); j++)
+            writeInt(os, nfverts[j]);
+    }
+    return os;
+}
+
+bool Mesh::loadFromStream(std::istream &is)
+{
+    mesh_ = OMMesh();
+    int nverts = readInt(is);
+    if(!is)
+    {
+        assert(false);
+        return false;
+    }
+    for(int i=0; i<nverts; i++)
+    {
+        OMMesh::Point newpt;
+        newpt[0] = readDouble(is);
+        newpt[1] = readDouble(is);
+        newpt[2] = readDouble(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+        mesh_.add_vertex(newpt);
+    }
+    int nfaces = readInt(is);
+    if(!is)
+    {
+        assert(false);
+        return false;
+    }
+    for(int i=0; i<nfaces; i++)
+    {
+        vector<OMMesh::VertexHandle> faceverts;
+        int nfverts = readInt(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+        for(int j=0; j<nfverts; j++)
+        {
+            int vidx = readInt(is);
+            if(!is)
+            {
+                assert(false);
+                return false;
+            }
+            faceverts.push_back(mesh_.vertex_handle(vidx));
+        }
+        mesh_.add_face(faceverts);
+    }
+    return true;
 }
 
 void Mesh::render(bool showWireframe, bool smoothShade)
@@ -262,4 +336,28 @@ bool Mesh::exportOBJ(const char *filename)
     mesh_.update_normals();
     opt.set(OpenMesh::IO::Options::VertexNormal);
     return OpenMesh::IO::write_mesh(mesh_, filename, opt);
+}
+
+void Mesh::writeInt(std::ostream &os, int i)
+{
+    os.write((const char *)&i, sizeof(int));
+}
+
+void Mesh::writeDouble(std::ostream &os, double d)
+{
+    os.write((const char *)&d, sizeof(double));
+}
+
+int Mesh::readInt(std::istream &is)
+{
+    int result;
+    is.read((char *)&result, sizeof(int));
+    return result;
+}
+
+double Mesh::readDouble(std::istream &is)
+{
+    double result;
+    is.read((char *)&result, sizeof(double));
+    return result;
 }

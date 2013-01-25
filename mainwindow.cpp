@@ -30,12 +30,22 @@ void MainWindow::setController(Controller &cont)
     ui->GLwidget2D->setController(cont);
 }
 
-string MainWindow::launchMeshOpenDialog()
+string MainWindow::launchSimulationOpenDialog()
 {
     string filename = string(QFileDialog::getOpenFileName(this,
-        tr("Open Mesh"), "", tr("Mesh Files (*.obj *.ply)")).toAscii());
+        tr("Open Simulation"), "", tr("Simulation Files (*.sim)")).toAscii());
 
     return filename;
+}
+
+string MainWindow::launchSimulationSaveDialog()
+{
+    QFileDialog fileDialog(this, "Save Simulation");
+    fileDialog.setNameFilter("Simulation Files (*.sim)");
+    fileDialog.setDirectory(QDir::currentPath());
+    fileDialog.setDefaultSuffix("sim");
+    fileDialog.exec();
+    return string(fileDialog.selectedFiles().first().toAscii());
 }
 
 void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle)
@@ -108,7 +118,7 @@ void MainWindow::on_actionExit_triggered()
 void MainWindow::on_actionLoad_OBJ_triggered()
 {
     assert(cont_);
-    cont_->loadOBJ();
+    cont_->loadSimulation();
 }
 
 void MainWindow::on_actionReset_Camera_triggered()
@@ -161,4 +171,10 @@ void MainWindow::on_actionExport_OBJ_triggered()
             cont_->exportOBJ(filename.toStdString().c_str());
         }
     }
+}
+
+void MainWindow::on_actionSave_Simulation_triggered()
+{
+    assert(cont_);
+    cont_->saveSimulation();
 }

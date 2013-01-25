@@ -14,7 +14,8 @@ public:
     void renderMesh();
     void renderMaterial();
     void quit();
-    void loadOBJ();
+    void loadSimulation();
+    void saveSimulation();
     void getSceneBounds(Eigen::Vector3d &center, double &radius);
     void getMaterialBounds(Eigen::Vector2d &center, double &radius);
     void newSchwarzLantern();
