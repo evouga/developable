@@ -5,7 +5,20 @@
 #include <OpenMesh/Core/Mesh/TriMesh_ArrayKernelT.hh>
 #include <Eigen/Core>
 
-typedef OpenMesh::TriMesh_ArrayKernelT<OpenMesh::DefaultTraits>  OMMesh;
+struct MyTraits : public OpenMesh::DefaultTraits
+{
+    VertexTraits
+    {
+    private:
+        Point vel_;
+    public:
+        VertexT() : vel_(Point(0.0f, 0.0f, 0.0f) ) {}
+        const Point &vel() const {return vel_;}
+        void set_vel(const Point &v) {vel_=v;}
+    };
+};
+
+typedef OpenMesh::TriMesh_ArrayKernelT<MyTraits>  OMMesh;
 
 class GLUquadric;
 
@@ -44,8 +57,10 @@ protected:
 
     void writeInt(std::ostream &os, int i);
     void writeDouble(std::ostream &os, double d);
+    void writeBool(std::ostream &os, bool b);
     int readInt(std::istream &is);
     double readDouble(std::istream &is);
+    bool readBool(std::istream &is);
 
 private:
     Mesh(const Mesh &other);

@@ -61,10 +61,10 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
             OMMesh::Point newmatpt(px,py,0);
             if(i == 0 || i == m)
             {
-                MaterialBoundary bd;
+                MaterialBoundary bd(material_);
                 bd.vertid = material_->getMesh().n_vertices();
-                Vector2d bdpt(px,py);
-                bd.pos = bdpt;
+                bd.xpos = px;
+                bd.onBottom = (i==0);
                 material_->getBoundaryVerts().push_back(bd);
             }
             material_->getMesh().add_vertex(newmatpt);
@@ -169,8 +169,22 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
             assert(cr[2] < 0);
         }
     }
-
     centerCylinder();
+
+    //fix Boundaries
+    for(int i=0; i<(int)boundaries_.size(); i++)
+    {
+        for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
+        {
+            OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(boundaries_[i].bdryVerts[j]));
+            boundaries_[i].bdryPos[j] = point2Vector(pt);
+        }
+    }
+    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
+    {
+        OMMesh::Point pt = material_->getMesh().point(material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].vertid));
+        material_->getBoundaryVerts()[i].xpos = pt[0];
+    }
 }
 
 void DevelopableMesh::collapseEdge(int eid)
@@ -202,14 +216,19 @@ void DevelopableMesh::collapseEdge(int eid)
             old2new.push_back(-1);
             continue;
         }
+        OMMesh::Point newvel;
         if(i == v2)
         {
             mergedid = newid;
+            newvel = (mesh_.data(mesh_.vertex_handle(v1)).vel() + mesh_.data(mesh_.vertex_handle(v2)).vel())*0.5;
         }
+        else
+            newvel = mesh_.data(mesh_.vertex_handle(i)).vel();
 
         old2new.push_back(newid++);
         OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(i));
-        newmesh.add_vertex(pt);
+        OMMesh::VertexHandle newvh = newmesh.add_vertex(pt);
+        newmesh.data(newvh).set_vel(newvel);
         OMMesh::Point mpt = material_->getMesh().point(material_->getMesh().vertex_handle(i));
         newmmesh->getMesh().add_vertex(mpt);
     }
@@ -250,6 +269,7 @@ void DevelopableMesh::collapseEdge(int eid)
                 seen = true;
         }
         MaterialBoundary newentry = entry;
+        newentry.m_ = newmmesh;
         newentry.vertid = old2new[entry.vertid];
         newBdryVerts.push_back(newentry);
         newmmesh->getBoundaryVerts() = newBdryVerts;

@@ -295,12 +295,14 @@ bool StaticsNLP::intermediate_callback(Ipopt::AlgorithmMode , Ipopt::Index , Ipo
 
     double *x = new double[startq_.size()];
     tnlp_adapter->ResortX(*ip_data->curr()->x(), x);
-    Eigen::VectorXd q(startq_.size());
+    Eigen::VectorXd q;
+    Eigen::VectorXd v;
+    dm_.gatherDOFs(q, v);
     for(int i=0; i<(int)startq_.size(); i++)
         q[i] = x[i];
     delete[] x;
 
-    dm_.repopulateDOFs(q);
+    dm_.repopulateDOFs(q,v);
     dc_.repaintCallback();
 
     if(dm_.shouldCollapseEdges(q))

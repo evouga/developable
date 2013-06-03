@@ -8,6 +8,7 @@
 #include <QGLWidget>
 #include <Eigen/Dense>
 #include "mathutil.h"
+#include "projectionnlp.h"
 
 using namespace Eigen;
 using namespace std;
@@ -141,29 +142,82 @@ void DevelopableMesh::centerCylinder()
     }
 }
 
+void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
+{
+    VectorXd q;
+    VectorXd v;
+    gatherDOFs(q,v);
+
+    cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
+
+    ProjectionNLP *pnlp = new ProjectionNLP(*this, dc, q);
+
+    IpoptApplication app;
+    app.Options()->SetNumericValue("tol", 1e-6);
+    //app.Options()->SetStringValue("derivative_test", "second-order");
+    app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
+    app.Initialize();
+    app.OptimizeTNLP(pnlp);
+    q = pnlp->getFinalQ();
+
+    flushOutNANs(q);
+
+    cout << "Final equality violation: " << equalityConstraintViolation(q) << endl;
+
+    repopulateDOFs(q,v);
+}
+
+void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
+{
+    double crushspeed = 0.1;
+    int steps = (int)(1.0/crushspeed/dt);
+    int framestep = steps/1000;
+    VectorXd q, v;
+    gatherDOFs(q,v);
+
+    for(int i=0; i<steps; i++)
+    {
+        v *= 0.9;
+        double k = 100;
+        q += dt*v;
+
+        repopulateDOFs(q, v);
+        for(int j=0; j<(int)boundaries_[1].bdryPos.size(); j++)
+        {
+                boundaries_[1].bdryPos[j][2] -= crushspeed*dt;
+        }
+        projectOntoConstraintManifold(dc);
+
+        int collapseid = findCollapsibleEdge(q);
+        while(collapseid != -1)
+        {
+            cout << "Collapse!" << endl;
+            assert(canCollapseEdge(collapseid));
+            collapseEdge(collapseid);
+            projectOntoConstraintManifold(dc);
+            collapseid = findCollapsibleEdge(q);
+        }
+        gatherDOFs(q, v);
+
+        double f;
+        VectorXd Df;
+        vector<T> Hf;
+        buildObjective(q, f, Df, Hf);
+        v += -dt*k*Df;
+        if(i%framestep == 0)
+            dc.repaintCallback();
+    }
+    repopulateDOFs(q,v);
+}
+
 void DevelopableMesh::deformLantern(DeformCallback &dc)
 {
     bool keepgoing = true;
     while(keepgoing)
     {
-        int nembverts = mesh_.n_vertices();
-        int nmatverts = material_->getMesh().n_vertices();
-
-        VectorXd q(3*nembverts+2*nmatverts);
-        for(int i=0; i<nembverts; i++)
-        {
-            for(int j=0; j<3; j++)
-            {
-                q[3*i+j] = mesh_.point(mesh_.vertex_handle(i))[j];
-            }
-        }
-        for(int i=0; i<nmatverts; i++)
-        {
-            for(int j=0; j<2; j++)
-            {
-                q[3*nembverts+2*i+j] = material_->getMesh().point(material_->getMesh().vertex_handle(i))[j];
-            }
-        }
+        VectorXd q;
+        VectorXd v;
+        gatherDOFs(q,v);
 
         cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
 
@@ -203,7 +257,7 @@ void DevelopableMesh::deformLantern(DeformCallback &dc)
             perturbConfiguration(q, negdirs, 1e-2);
         }
 
-        repopulateDOFs(q);
+        repopulateDOFs(q,v);
 
         if(status == User_Requested_Stop)
         {
@@ -296,28 +350,63 @@ void DevelopableMesh::renderMaterial()
     glPointSize(1.0);
 }
 
-void DevelopableMesh::repopulateDOFs(const Eigen::VectorXd &q)
+void DevelopableMesh::gatherDOFs(Eigen::VectorXd &q, Eigen::VectorXd &v)
+{
+    int nembverts = mesh_.n_vertices();
+    int nmatverts = material_->getMesh().n_vertices();
+
+    q.resize(3*nembverts + 2*nmatverts);
+    v.resize(3*nembverts + 2*nmatverts);
+
+    for(int i=0; i<nembverts; i++)
+    {
+        OMMesh::Point vel = mesh_.data(mesh_.vertex_handle(i)).vel();
+        for(int j=0; j<3; j++)
+        {
+            q[3*i+j] = mesh_.point(mesh_.vertex_handle(i))[j];
+            v[3*i+j] = vel[j];
+        }
+    }
+
+    for(int i=0; i<nmatverts; i++)
+    {
+        OMMesh::Point vel = material_->getMesh().data(material_->getMesh().vertex_handle(i)).vel();
+        for(int j=0; j<2; j++)
+        {
+            q[3*nembverts+2*i+j] = material_->getMesh().point(material_->getMesh().vertex_handle(i))[j];
+            v[3*nembverts+2*i+j] = vel[j];
+        }
+    }
+}
+
+void DevelopableMesh::repopulateDOFs(const Eigen::VectorXd &q, const Eigen::VectorXd &v)
 {
     int nembverts = mesh_.n_vertices();
     int nmatverts = material_->getMesh().n_vertices();
 
     for(int i=0; i<nembverts; i++)
     {
+        OMMesh::Point newvel;
         for(int j=0; j<3; j++)
         {
             mesh_.point(mesh_.vertex_handle(i))[j] = q[3*i+j];
+            newvel[j] = v[3*i+j];
         }
+        mesh_.data(mesh_.vertex_handle(i)).set_vel(newvel);
     }
 
     for(int i=0; i<nmatverts; i++)
     {
+        OMMesh::Point newvel;
         for(int j=0; j<2; j++)
         {
             material_->getMesh().point(material_->getMesh().vertex_handle(i))[j] = q[3*nembverts+2*i+j];
+            newvel[j] = v[3*nembverts+2*i+j];
         }
+        newvel[2] = 0;
+        OMMesh &matmesh = material_->getMesh();
+        matmesh.data(material_->getMesh().vertex_handle(i)).set_vel(newvel);
     }
-
-    centerCylinder();
 }
 
 int DevelopableMesh::activeInequalityConstraints(const Eigen::VectorXd &q)
@@ -452,7 +541,11 @@ double DevelopableMesh::equalityConstraintViolation(const Eigen::VectorXd &q)
     vector<T> Dg;
     vector<vector<T> > Hg;
     buildConstraints(q, g, Dg, Hg);
-    return g.norm();
+    double max = 0.0;
+    for(int i=0; i<(int)g.size(); i++)
+        if(fabs(g[i]) > max)
+            max = fabs(g[i]);
+    return max;
 }
 
 void DevelopableMesh::perturbConfiguration(Eigen::VectorXd &q, const std::vector<VectorXd> &dirs, double mag)

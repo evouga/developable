@@ -78,13 +78,7 @@ void Controller::newSchwarzLantern()
 
 void Controller::deformLantern()
 {
-    for(int i=0; i<1; i++)
-    {
-        m_.deformLantern(*this);
-        stringstream ss;
-        ss << "frame_" << setfill('0') << setw(6) << i << ".png";
-        mw_.saveScreenshot(ss.str());
-    }
+    m_.crushLantern(*this, 1e-3);
 }
 
 void Controller::repaintCallback()

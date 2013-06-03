@@ -150,16 +150,26 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
     // coupling constraints between edge lengths
     for(int i=0; i<(int)mesh_.n_edges(); i++)
     {
-        if(!mesh_.is_boundary(mesh_.edge_handle(i)))
-            numconstraints++;
+        numconstraints++;
     }
 
-    // top and bottom verts have x and y values fixed
-    numconstraints += 2*material_->getBoundaryVerts().size();
+    // top and bottom verts have y values fixed
+    numconstraints += material_->getBoundaryVerts().size();
 
-    // top and bottom of embedded cylinder have y values fixed
+    // bottom verts have x values fixed
+    int numbottom = 0;
+    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
+    {
+        if(material_->getBoundaryVerts()[i].onBottom)
+            numbottom++;
+    }
+    numconstraints += numbottom;
+
+    int numemb = 0;
+    // top and bottom of embedded cylinder have values fixed
     for(int i=0; i<(int)boundaries_.size(); i++)
-        numconstraints += 3*boundaries_[i].bdryVerts.size();
+        numemb += 3*boundaries_[i].bdryVerts.size();
+    numconstraints += numemb;
 
 
     g.resize(numconstraints);
@@ -172,8 +182,6 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
     for(int i=0; i<(int)mesh_.n_edges(); i++)
     {
         OMMesh::EdgeHandle eh = mesh_.edge_handle(i);
-        if(mesh_.is_boundary(eh))
-            continue;
         OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(eh,0);
         int embids[2];
         embids[0] = mesh_.from_vertex_handle(heh).idx();
@@ -227,10 +235,11 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
 
     for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
     {
-        for(int j=0; j<2; j++)
+        MaterialBoundary &bdry = material_->getBoundaryVerts()[i];
+        Vector2d pos = bdry.getPos();
+        for(int j=(bdry.onBottom ? 0 : 1); j<2; j++)
         {
-            MaterialBoundary bdry = material_->getBoundaryVerts()[i];
-            g[row] = matq[2*bdry.vertid+j] - bdry.pos[j];
+            g[row] = matq[2*bdry.vertid+j] - pos[j];
             Dg.push_back(T(row, 3*nembverts+2*bdry.vertid+j, 1.0));
             vector<T> Hgentry;
             Hg.push_back(Hgentry);
@@ -246,7 +255,6 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
             int vidx = boundaries_[i].bdryVerts[j];
             for(int k=0; k<3; k++)
             {
-
                 g[row] = embq[3*vidx+k] - targetpt[k];
                 Dg.push_back(T(row, 3*vidx+k, 1.0));
                 vector<T> Hgentry;

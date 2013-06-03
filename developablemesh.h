@@ -36,7 +36,9 @@ public:
     virtual bool loadFromStream(std::istream &is);
     virtual bool saveToStream(std::ostream &os);
 
+    void projectOntoConstraintManifold(DeformCallback &dc);
     void deformLantern(DeformCallback &dc);
+    void crushLantern(DeformCallback &dc, double dt);
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
     void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, std::vector<std::vector<T> > &Hg);
     void buildInversionConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &h, std::vector<T> &Dh, std::vector<std::vector<T> > &Hh);
@@ -48,7 +50,10 @@ public:
     double materialRadius();
     void renderMaterial();
 
-    void repopulateDOFs(const Eigen::VectorXd &q);
+    void gatherDOFs(Eigen::VectorXd &q, Eigen::VectorXd &v);
+    void repopulateDOFs(const Eigen::VectorXd &q, const Eigen::VectorXd &v);
+
+    double equalityConstraintViolation(const Eigen::VectorXd &q);
 
 private:
     DevelopableMesh(const DevelopableMesh &other);
@@ -66,7 +71,6 @@ private:
     bool canCollapseEdge(int eid);
     void collapseEdge(int eid);
 
-    double equalityConstraintViolation(const Eigen::VectorXd &q);
     int activeInequalityConstraints(const Eigen::VectorXd &q);
     void buildConstraintBasis(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &normalspace, std::vector<Eigen::VectorXd> &tangentspace);
     CriticalPointType checkConstrainedHessian(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &negdirs);

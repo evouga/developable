@@ -4,6 +4,11 @@
 using namespace std;
 using namespace Eigen;
 
+Vector2d MaterialBoundary::getPos()
+{
+    return Eigen::Vector2d(xpos, onBottom ? 0.0 : m_->getH());
+}
+
 bool MaterialMesh::saveToStream(std::ostream &os)
 {
     if(!PeriodicMesh::saveToStream(os))
@@ -16,9 +21,8 @@ bool MaterialMesh::saveToStream(std::ostream &os)
     for(int i=0; i<nbdryverts; i++)
     {
         writeInt(os, bdryverts_[i].vertid);
-        Vector2d pos = bdryverts_[i].pos;
-        writeDouble(os,pos[0]);
-        writeDouble(os,pos[1]);
+        writeDouble(os, bdryverts_[i].xpos);
+        writeBool(os, bdryverts_[i].onBottom);
     }
 
     int nmapentries = embedge2matedge_.size();
@@ -47,12 +51,10 @@ bool MaterialMesh::loadFromStream(std::istream &is)
     bdryverts_.clear();
     for(int i=0; i<nbdryverts; i++)
     {
-        MaterialBoundary bdinfo;
+        MaterialBoundary bdinfo(this);
         bdinfo.vertid = readInt(is);
-        Vector2d pos;
-        pos[0] = readDouble(is);
-        pos[1] = readDouble(is);
-        bdinfo.pos = pos;
+        bdinfo.xpos = readDouble(is);
+        bdinfo.onBottom = readBool(is);
         if(!is)
             return false;
         bdryverts_.push_back(bdinfo);

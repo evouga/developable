@@ -5,10 +5,19 @@
 #include <vector>
 #include <map>
 
+class MaterialMesh;
+
 struct MaterialBoundary
 {
+    MaterialBoundary(MaterialMesh *m) : m_(m) {}
+
+    Eigen::Vector2d getPos();
+
+    MaterialMesh *m_;
     int vertid;
-    Eigen::Matrix<double,2,1,Eigen::DontAlign> pos;
+    double xpos;
+    bool onBottom;
+
 };
 
 class MaterialMesh : public PeriodicMesh
@@ -20,6 +29,7 @@ public:
     virtual bool loadFromStream(std::istream &is);
 
     double getH() {return H_;}
+    void setH(double H) {H_=H;}
 
     std::vector<MaterialBoundary> &getBoundaryVerts() {return bdryverts_;}
     int materialEdge(int embeddedEdge);

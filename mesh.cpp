@@ -28,6 +28,11 @@ bool Mesh::saveToStream(std::ostream &os)
         writeDouble(os, pt[0]);
         writeDouble(os, pt[1]);
         writeDouble(os, pt[2]);
+
+        OMMesh::Point vel = mesh_.data(mesh_.vertex_handle(i)).vel();
+        writeDouble(os, vel[0]);
+        writeDouble(os, vel[1]);
+        writeDouble(os, vel[2]);
     }
     writeInt(os, nfaces);
     for(int i=0; i<nfaces; i++)
@@ -63,7 +68,19 @@ bool Mesh::loadFromStream(std::istream &is)
             assert(false);
             return false;
         }
-        mesh_.add_vertex(newpt);
+
+        OMMesh::Point newvel;
+        newvel[0] = readDouble(is);
+        newvel[1] = readDouble(is);
+        newvel[2] = readDouble(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+
+        OMMesh::VertexHandle newvh = mesh_.add_vertex(newpt);
+        mesh_.data(newvh).set_vel(newvel);
     }
     int nfaces = readInt(is);
     if(!is)
@@ -348,6 +365,11 @@ void Mesh::writeDouble(std::ostream &os, double d)
     os.write((const char *)&d, sizeof(double));
 }
 
+void Mesh::writeBool(std::ostream &os, bool b)
+{
+    writeInt(os, b ? 1 : 0);
+}
+
 int Mesh::readInt(std::istream &is)
 {
     int result;
@@ -360,4 +382,9 @@ double Mesh::readDouble(std::istream &is)
     double result;
     is.read((char *)&result, sizeof(double));
     return result;
+}
+
+bool Mesh::readBool(std::istream &is)
+{
+    return readInt(is) != 0;
 }
