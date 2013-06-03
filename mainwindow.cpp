@@ -33,7 +33,7 @@ void MainWindow::setController(Controller &cont)
 string MainWindow::launchSimulationOpenDialog()
 {
     string filename = string(QFileDialog::getOpenFileName(this,
-        tr("Open Simulation"), "", tr("Simulation Files (*.sim)")).toAscii());
+        tr("Open Simulation"), "", tr("Simulation Files (*.sim)")).toStdString());
 
     return filename;
 }
@@ -45,7 +45,7 @@ string MainWindow::launchSimulationSaveDialog()
     fileDialog.setDirectory(QDir::currentPath());
     fileDialog.setDefaultSuffix("sim");
     fileDialog.exec();
-    return string(fileDialog.selectedFiles().first().toAscii());
+    return string(fileDialog.selectedFiles().first().toStdString());
 }
 
 void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle)
@@ -74,7 +74,7 @@ void MainWindow::saveScreenshot()
 {
     QDateTime dateTime = QDateTime::currentDateTime();
     QString dateTimeString = dateTime.toString("dd_MM_yy_hh_mm_ss_zzz");
-    string filename = "screen_" + string(dateTimeString.toAscii()) + ".png";
+    string filename = "screen_" + string(dateTimeString.toStdString()) + ".png";
     saveScreenshot(filename);
 }
 
@@ -83,7 +83,7 @@ void MainWindow::saveScreenshot(const string &filename)
     updateGL();
     QPixmap p = QPixmap::grabWidget(this);
     QString curdir = QDir::currentPath();
-    string fullname = string(curdir.toAscii()) + "/output/" + filename;
+    string fullname = string(curdir.toStdString()) + "/output/" + filename;
     p.save(QString::fromUtf8(fullname.c_str()));
     //ui->GLwidget->saveScreenshot(fullname);
 }
