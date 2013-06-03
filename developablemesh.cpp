@@ -3,16 +3,12 @@
 #include <Eigen/Sparse>
 #include <Eigen/Geometry>
 #include <set>
-#include "coin/IpIpoptApplication.hpp"
-#include "staticsnlp.h"
 #include <QGLWidget>
 #include <Eigen/Dense>
 #include "mathutil.h"
-#include "projectionnlp.h"
 
 using namespace Eigen;
 using namespace std;
-using namespace Ipopt;
 
 DevelopableMesh::DevelopableMesh() : material_(new MaterialMesh(0))
 {
@@ -150,19 +146,6 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
 
-    ProjectionNLP *pnlp = new ProjectionNLP(*this, dc, q);
-
-    IpoptApplication app;
-    app.Options()->SetNumericValue("tol", 1e-6);
-    //app.Options()->SetStringValue("derivative_test", "second-order");
-    app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
-    app.Initialize();
-    app.OptimizeTNLP(pnlp);
-    q = pnlp->getFinalQ();
-
-    flushOutNANs(q);
-
-    cout << "Final equality violation: " << equalityConstraintViolation(q) << endl;
 
     repopulateDOFs(q,v);
 }
@@ -208,70 +191,6 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
             dc.repaintCallback();
     }
     repopulateDOFs(q,v);
-}
-
-void DevelopableMesh::deformLantern(DeformCallback &dc)
-{
-    bool keepgoing = true;
-    while(keepgoing)
-    {
-        VectorXd q;
-        VectorXd v;
-        gatherDOFs(q,v);
-
-        cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
-
-        int inequalities = activeInequalityConstraints(q);
-        cout << "Active inequality constraints: " << inequalities << endl;
-        double f;
-        VectorXd Df;
-        vector<T> Hf;
-        buildObjective(q, f, Df, Hf);
-        cout << "Initial energy: " << f << endl;
-        StaticsNLP *mynlp = new StaticsNLP(*this, dc, q);
-        IpoptApplication app;
-        app.Options()->SetNumericValue("tol", 1e-6);
-        //app.Options()->SetStringValue("mu_strategy", "adaptive");
-        //app.Options()->SetStringValue("derivative_test", "second-order");
-        app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
-        //app.Options()->SetIntegerValue("print_level", 7);
-        app.Initialize();
-        ApplicationReturnStatus status = app.OptimizeTNLP(mynlp);
-
-        q = mynlp->getFinalQ();
-
-        flushOutNANs(q);
-
-        buildObjective(q, f, Df, Hf);
-        inequalities = activeInequalityConstraints(q);
-        cout << "Energy " << f << endl;
-        cout << "Equality violation: " << equalityConstraintViolation(q) << endl;
-        cout << "Active inequality constraints: " << inequalities << endl;
-
-        vector<VectorXd> negdirs;
-        CriticalPointType type = checkConstrainedHessian(q, negdirs);
-        keepgoing = false;
-        if(status == Solve_Succeeded && type == CPT_SADDLE)
-        {
-            keepgoing = true;
-            perturbConfiguration(q, negdirs, 1e-2);
-        }
-
-        repopulateDOFs(q,v);
-
-        if(status == User_Requested_Stop)
-        {
-            keepgoing = true;
-            int collapseid = findCollapsibleEdge(q);
-            if(collapseid != -1)
-            {
-                assert(canCollapseEdge(collapseid));
-                collapseEdge(collapseid);
-            }
-        }
-
-        //centerCylinder();
-    }
 }
 
 bool DevelopableMesh::shouldCollapseEdges(const Eigen::VectorXd &q)

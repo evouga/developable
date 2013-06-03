@@ -28,9 +28,7 @@ SOURCES += main.cpp \
     developablemesh-energies.cpp \
     developablemesh-topology.cpp \
     mathutil.cpp \
-    materialmesh.cpp \
-    staticsnlp.cpp \
-    projectionnlp.cpp
+    materialmesh.cpp
 
 HEADERS += \
     mainwindow.h \
@@ -48,13 +46,11 @@ HEADERS += \
     glwidget2d.h \
     periodicmesh.h \
     mathutil.h \
-    materialmesh.h \
-    staticsnlp.h \
-    projectionnlp.h
+    materialmesh.h
 
-LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt -lcoinhsl -lgfortran -lblas -llapack
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMeshLib -lOpenMeshCore
 
-INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.3/include
+INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/FADBAD++
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework

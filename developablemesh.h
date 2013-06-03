@@ -37,7 +37,6 @@ public:
     virtual bool saveToStream(std::ostream &os);
 
     void projectOntoConstraintManifold(DeformCallback &dc);
-    void deformLantern(DeformCallback &dc);
     void crushLantern(DeformCallback &dc, double dt);
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
     void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, std::vector<std::vector<T> > &Hg);
