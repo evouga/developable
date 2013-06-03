@@ -28,7 +28,8 @@ SOURCES += main.cpp \
     developablemesh-energies.cpp \
     developablemesh-topology.cpp \
     mathutil.cpp \
-    materialmesh.cpp
+    materialmesh.cpp \
+    developablemesh-shapematch.cpp
 
 HEADERS += \
     mainwindow.h \

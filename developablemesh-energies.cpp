@@ -10,8 +10,8 @@ using namespace std;
 
 void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf)
 {
-    double nembverts = mesh_.n_vertices();
-    double nmatverts = material_->getMesh().n_vertices();
+    int nembverts = mesh_.n_vertices();
+    int nmatverts = material_->getMesh().n_vertices();
     assert(q.size() == 3*nembverts + 2*nmatverts);
     VectorXd embq = q.segment(0,3*nembverts);
 
@@ -140,8 +140,8 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
 
 void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, vector<vector<T> > &Hg)
 {
-    double nembverts = mesh_.n_vertices();
-    double nmatverts = material_->getMesh().n_vertices();
+    int nembverts = mesh_.n_vertices();
+    int nmatverts = material_->getMesh().n_vertices();
     assert(q.size() == 3*nembverts + 2*nmatverts);
     VectorXd embq = q.segment(0,3*nembverts);
     VectorXd matq = q.segment(3*nembverts, 2*nmatverts);

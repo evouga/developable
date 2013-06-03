@@ -77,6 +77,10 @@ private:
 
     void flushOutNANs(const Eigen::VectorXd &q);
     void perturbConfiguration(Eigen::VectorXd &q, const std::vector<Eigen::VectorXd> &dirs, double mag);
+
+    void shapeMatch(const std::vector<Eigen::Vector3d> &sourcePts, const std::vector<Eigen::Vector3d> &targetPts,
+                    std::vector<Eigen::Vector3d> &resultPts);
+    OMMesh *warpMaterialToEmbedded(const Eigen::VectorXd &q);
 };
 
 #endif // DEVELOPABLEMESH_H
