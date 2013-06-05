@@ -24,6 +24,12 @@ struct Boundary
     std::vector<Eigen::Vector3d> bdryPos;
 };
 
+struct WarpedMesh
+{
+    Mesh mesh;
+    std::map<int, int> vertexMap;
+};
+
 class DevelopableMesh : public Mesh
 {
 public:
@@ -35,6 +41,8 @@ public:
     void buildSchwarzLantern(double r, double h, int n, int m, double angle);
     virtual bool loadFromStream(std::istream &is);
     virtual bool saveToStream(std::ostream &os);
+
+    virtual void render(bool showWireframe, bool smoothShade);
 
     void projectOntoConstraintManifold(DeformCallback &dc);
     void crushLantern(DeformCallback &dc, double dt);
@@ -60,6 +68,7 @@ private:
 
     std::vector<Boundary> boundaries_;
     MaterialMesh *material_;
+    WarpedMesh renderWarpedMesh_;
 
     Eigen::Vector3d point2Vector(OMMesh::Point pt);
 
@@ -78,9 +87,13 @@ private:
     void flushOutNANs(const Eigen::VectorXd &q);
     void perturbConfiguration(Eigen::VectorXd &q, const std::vector<Eigen::VectorXd> &dirs, double mag);
 
+    void enforceBoundaryConstraints(Eigen::VectorXd &q);
     void shapeMatch(const std::vector<Eigen::Vector3d> &sourcePts, const std::vector<Eigen::Vector3d> &targetPts,
                     std::vector<Eigen::Vector3d> &resultPts);
-    OMMesh *warpMaterialToEmbedded(const Eigen::VectorXd &q);
+    void warpMaterialToEmbedded(const Eigen::VectorXd &q, WarpedMesh &result);
+    void warpEmbeddedToMaterial(const Eigen::VectorXd &q, WarpedMesh &result);
+    double averageWarpedEmbeddedMesh(Eigen::VectorXd &q, WarpedMesh &warped);
+    double averageWarpedMaterialMesh(Eigen::VectorXd &q, WarpedMesh &warped);
 };
 
 #endif // DEVELOPABLEMESH_H

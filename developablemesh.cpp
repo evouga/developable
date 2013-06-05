@@ -1,4 +1,4 @@
-#include "developablemesh.h"
+﻿#include "developablemesh.h"
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <Eigen/Geometry>
@@ -145,7 +145,21 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
     gatherDOFs(q,v);
 
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
+    WarpedMesh warped;
+    for(int i=0; i<5; i++)
+    {
+        cout << "Iter " << i << ": " << endl;
+        enforceBoundaryConstraints(q);
 
+        warpMaterialToEmbedded(q, warped);
+        double error = averageWarpedEmbeddedMesh(q, warped);
+        cout << "\tShape match error, embedded: " << error << endl;
+
+        warpEmbeddedToMaterial(q, warped);
+        error = averageWarpedMaterialMesh(q, warped);
+        cout << "\tShape match error, material: " << error << endl;
+    }
+    cout << endl;
 
     repopulateDOFs(q,v);
 }
@@ -154,7 +168,7 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
 {
     double crushspeed = 0.1;
     int steps = (int)(1.0/crushspeed/dt);
-    int framestep = steps/1000;
+    int framestep = 10;
     VectorXd q, v;
     gatherDOFs(q,v);
 
@@ -232,6 +246,12 @@ double DevelopableMesh::materialRadius()
         }
     }
     return maxradius;
+}
+
+void DevelopableMesh::render(bool showWireframe, bool smoothShade)
+{
+    Mesh::render(showWireframe, smoothShade);
+    renderWarpedMesh_.mesh.render(true, false);
 }
 
 void DevelopableMesh::renderMaterial()

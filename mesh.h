@@ -34,7 +34,7 @@ public:
     virtual bool saveToStream(std::ostream &os);
     OMMesh &getMesh() {return mesh_;}
     const OMMesh &getMesh() const {return mesh_;}
-    void render(bool showWireframe, bool smoothShade);
+    virtual void render(bool showWireframe, bool smoothShade);
 
     Eigen::Vector3d centroid();
     double radius();
