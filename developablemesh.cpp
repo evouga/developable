@@ -146,7 +146,7 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
     WarpedMesh warped;
-    for(int i=0; i<5; i++)
+    for(int i=0; i<15; i++)
     {
         cout << "Iter " << i << ": " << endl;
         enforceBoundaryConstraints(q);
@@ -159,7 +159,7 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
         error = averageWarpedMaterialMesh(q, warped);
         cout << "\tShape match error, material: " << error << endl;
     }
-    cout << endl;
+    cout << endl << endl << endl;
 
     repopulateDOFs(q,v);
 }

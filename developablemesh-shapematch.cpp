@@ -250,6 +250,7 @@ void DevelopableMesh::warpMaterialToEmbedded(const Eigen::VectorXd &q, WarpedMes
 
 void DevelopableMesh::enforceBoundaryConstraints(VectorXd &q)
 {
+    int nembverts = mesh_.n_vertices();
     for(int i=0; i<(int)boundaries_.size(); i++)
     {
         for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
@@ -259,5 +260,14 @@ void DevelopableMesh::enforceBoundaryConstraints(VectorXd &q)
             q.segment<3>(3*vidx) = targetpt;
         }
     }
-    // TODO material constraints
+
+    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
+    {
+        MaterialBoundary &bdry = material_->getBoundaryVerts()[i];
+        Vector2d pos = bdry.getPos();
+        for(int j=(bdry.onBottom ? 0 : 1); j<2; j++)
+        {
+            q[3*nembverts+2*bdry.vertid+j] = pos[j];
+        }
+    }
 }
