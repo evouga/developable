@@ -6,6 +6,7 @@
 #include <QGLWidget>
 #include <Eigen/Dense>
 #include "mathutil.h"
+#include <QThread>
 
 using namespace Eigen;
 using namespace std;
@@ -138,42 +139,64 @@ void DevelopableMesh::centerCylinder()
     }
 }
 
-void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
+void DevelopableMesh::projectOntoConstraintManifold()
 {
     VectorXd q;
     VectorXd v;
     gatherDOFs(q,v);
 
+    const double energyThreshold = 1e-6;
+    const double slopeThreshold = 0;
+    const int maxiters = 1000000;
+    bool stalled = false;
+    int iter = 0;
+
+    double error = numeric_limits<double>::infinity();
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
     WarpedMesh warped;
-    for(int i=0; i<15; i++)
+    while(error > energyThreshold)
     {
-        cout << "Iter " << i << ": " << endl;
-        enforceBoundaryConstraints(q);
 
         warpMaterialToEmbedded(q, warped);
-        double error = averageWarpedEmbeddedMesh(q, warped);
-        cout << "\tShape match error, embedded: " << error << endl;
+        averageWarpedEmbeddedMesh(q, warped);
 
         warpEmbeddedToMaterial(q, warped);
-        error = averageWarpedMaterialMesh(q, warped);
-        cout << "\tShape match error, material: " << error << endl;
+        averageWarpedMaterialMesh(q, warped);
+        iter++;
+
+        enforceBoundaryConstraints(q);
+
+        double newerror = equalityConstraintViolation(q);
+
+        if(fabs(newerror-error) < slopeThreshold)
+        {
+            stalled = true;
+            error = newerror;
+            break;
+        }
+        error = newerror;
+        if(iter > maxiters)
+            break;
+
     }
-    cout << endl << endl << endl;
+    cout << (stalled ? "Stalled " : "Converged ") << "after " << iter << " iterations: " << error;
+    cout << endl;
 
     repopulateDOFs(q,v);
 }
 
 void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
 {
-    double crushspeed = 0.1;
+    double crushspeed = 0.01;
     int steps = (int)(1.0/crushspeed/dt);
-    int framestep = 10;
+    int framestep = 1;
     VectorXd q, v;
-    gatherDOFs(q,v);
+    int collapsecount = 0;
 
     for(int i=0; i<steps; i++)
     {
+        gatherDOFs(q,v);
+
         v *= 0.9;
         double k = 100;
         q += dt*v;
@@ -183,28 +206,38 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
         {
                 boundaries_[1].bdryPos[j][2] -= crushspeed*dt;
         }
-        projectOntoConstraintManifold(dc);
+        projectOntoConstraintManifold();
 
-        int collapseid = findCollapsibleEdge(q);
+        gatherDOFs(q, v);
+        /*int collapseid = findCollapsibleEdge(q);
         while(collapseid != -1)
         {
+            collapsecount++;
             cout << "Collapse!" << endl;
             assert(canCollapseEdge(collapseid));
             collapseEdge(collapseid);
-            projectOntoConstraintManifold(dc);
+            projectOntoConstraintManifold();
+            setStrains();
+            dc.repaintCallback();
+
+            gatherDOFs(q, v);
             collapseid = findCollapsibleEdge(q);
-        }
-        gatherDOFs(q, v);
+        }*/
+
 
         double f;
         VectorXd Df;
         vector<T> Hf;
         buildObjective(q, f, Df, Hf);
         v += -dt*k*Df;
+        repopulateDOFs(q,v);
         if(i%framestep == 0)
+        {
+            setStrains();
             dc.repaintCallback();
+        }
+
     }
-    repopulateDOFs(q,v);
 }
 
 bool DevelopableMesh::shouldCollapseEdges(const Eigen::VectorXd &q)
@@ -535,4 +568,19 @@ void DevelopableMesh::gatherInfo(const Eigen::VectorXd &q)
     vector<VectorXd> normalspace, tangentspace;
     buildConstraintBasis(q, normalspace, tangentspace);
     cout << "Tangent space is " << tangentspace.size() << " dimensional" << endl;
+}
+
+void DevelopableMesh::jitter(double r)
+{
+    for(OMMesh::VertexIter vi = mesh_.vertices_begin(); vi != mesh_.vertices_end(); ++vi)
+    {
+        OMMesh::Point &pt = mesh_.point(vi.handle());
+        for(int i=0; i<3; i++)
+            pt[i] += MathUtil::randomDouble(0, r/sqrt(3.0));
+    }
+    Eigen::VectorXd q, v;
+    gatherDOFs(q, v);
+    enforceBoundaryConstraints(q);
+    setStrains();
+    repopulateDOFs(q,v);
 }

@@ -145,21 +145,25 @@ void Mesh::render(bool showWireframe, bool smoothShade)
     pos.clear();
     normal.clear();
 
-    for(int i=0; i<(int)mesh_.n_vertices(); i++)
+    for(OMMesh::FaceIter fi = mesh_.faces_begin(); fi != mesh_.faces_end(); ++fi)
     {
-        Vector3d color;
-        OMMesh::VertexHandle v = mesh_.vertex_handle(i);
-        color = Vector3d(0.0, 186/255., 0.0);
-
-        OMMesh::Point pt = mesh_.point(v);
-        OMMesh::Point n;
-        mesh_.calc_vertex_normal_correct(v, n);
-        n.normalize();
-        for(int j=0; j<3; j++)
+        double straind = mesh_.data(fi.handle()).strainDensity();
+        for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(fi.handle()); fvi; ++fvi)
         {
-            pos.push_back(pt[j]);
-            normal.push_back(n[j]);
-            colors.push_back(color[j]);
+            Vector3d color;
+            OMMesh::VertexHandle v = fvi.handle();
+            color = Vector3d(straind, (1.0 - 0.5*straind)*186/255., 0.0);
+
+            OMMesh::Point pt = mesh_.point(v);
+            OMMesh::Point n;
+            mesh_.calc_vertex_normal_correct(v, n);
+            n.normalize();
+            for(int j=0; j<3; j++)
+            {
+                pos.push_back(pt[j]);
+                normal.push_back(n[j]);
+                colors.push_back(color[j]);
+            }
         }
     }
 
@@ -167,11 +171,12 @@ void Mesh::render(bool showWireframe, bool smoothShade)
     glNormalPointer(GL_FLOAT, 0, &normal[0]);
     glColorPointer(3, GL_FLOAT, 0, &colors[0]);
 
-    OMMesh::ConstFaceIter f, fEnd = mesh_.faces_end();
-    int i=0;
-    for (f = mesh_.faces_begin(); f != fEnd; ++f,i++) {
-        for (OMMesh::ConstFaceVertexIter v = mesh_.cfv_iter(f); v; ++v) {
-            indices.push_back(v.handle().idx());
+    int idx=0;
+    for (int i=0; i<(int)mesh_.n_faces(); i++)
+    {
+        for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(mesh_.face_handle(i)); fvi; ++fvi)
+        {
+            indices.push_back(idx++);
         }
     }
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, &indices[0]);

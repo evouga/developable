@@ -53,6 +53,8 @@ private slots:
 
     void on_actionSave_Simulation_triggered();
 
+    void on_actionJitter_triggered();
+
 private:
     void updateGL();
     Ui::MainWindow *ui;

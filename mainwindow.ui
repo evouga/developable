@@ -164,7 +164,6 @@
     <addaction name="actionLoad_OBJ"/>
     <addaction name="actionSave_Simulation"/>
     <addaction name="actionExit"/>
-    <addaction name="actionSchwarz_Lantern"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -174,8 +173,16 @@
     <addaction name="actionTake_Screenshot"/>
     <addaction name="actionExport_OBJ"/>
    </widget>
+   <widget class="QMenu" name="menuMesh">
+    <property name="title">
+     <string>Mesh</string>
+    </property>
+    <addaction name="actionSchwarz_Lantern"/>
+    <addaction name="actionJitter"/>
+   </widget>
    <addaction name="menuVViewer"/>
    <addaction name="menuView"/>
+   <addaction name="menuMesh"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_OBJ">
@@ -211,6 +218,11 @@
   <action name="actionSave_Simulation">
    <property name="text">
     <string>Save Simulation</string>
+   </property>
+  </action>
+  <action name="actionJitter">
+   <property name="text">
+    <string>Jitter</string>
    </property>
   </action>
  </widget>

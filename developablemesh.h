@@ -44,7 +44,7 @@ public:
 
     virtual void render(bool showWireframe, bool smoothShade);
 
-    void projectOntoConstraintManifold(DeformCallback &dc);
+    void projectOntoConstraintManifold();
     void crushLantern(DeformCallback &dc, double dt);
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
     void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, std::vector<std::vector<T> > &Hg);
@@ -61,6 +61,8 @@ public:
     void repopulateDOFs(const Eigen::VectorXd &q, const Eigen::VectorXd &v);
 
     double equalityConstraintViolation(const Eigen::VectorXd &q);
+
+    void jitter(double r);
 
 private:
     DevelopableMesh(const DevelopableMesh &other);
@@ -94,6 +96,9 @@ private:
     void warpEmbeddedToMaterial(const Eigen::VectorXd &q, WarpedMesh &result);
     double averageWarpedEmbeddedMesh(Eigen::VectorXd &q, WarpedMesh &warped);
     double averageWarpedMaterialMesh(Eigen::VectorXd &q, WarpedMesh &warped);
+
+    double faceStrainDensity(int faceid);
+    void setStrains();
 };
 
 #endif // DEVELOPABLEMESH_H

@@ -379,7 +379,7 @@ bool DevelopableMesh::canCollapseEdge(int eid)
 
 int DevelopableMesh::findCollapsibleEdge(const Eigen::VectorXd &q)
 {
-    const double constrtol = 0.01;
+    const double constrtol = 0.001;
 
     for(OMMesh::HalfedgeIter hei = mesh_.halfedges_begin(); hei != mesh_.halfedges_end(); ++hei)
     {

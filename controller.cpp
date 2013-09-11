@@ -99,3 +99,8 @@ void Controller::exportOBJ(const char *filename)
         return;
     }
 }
+
+void Controller::jitterMesh()
+{
+    m_.jitter(0.01);
+}

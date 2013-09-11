@@ -16,6 +16,16 @@ struct MyTraits : public OpenMesh::DefaultTraits
         const Point &vel() const {return vel_;}
         void set_vel(const Point &v) {vel_=v;}
     };
+
+    FaceTraits
+    {
+    private:
+        double strainDensity_;
+    public:
+        FaceT() : strainDensity_(0) {}
+        double strainDensity() const {return strainDensity_;}
+        void set_strainDensity(double density) {strainDensity_ = density;}
+    };
 };
 
 typedef OpenMesh::TriMesh_ArrayKernelT<MyTraits>  OMMesh;

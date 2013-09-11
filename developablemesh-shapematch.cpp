@@ -271,3 +271,80 @@ void DevelopableMesh::enforceBoundaryConstraints(VectorXd &q)
         }
     }
 }
+
+void DevelopableMesh::setStrains()
+{
+    int numfaces = mesh_.n_faces();
+    for(int i=0; i<numfaces; i++)
+    {
+        double strain = faceStrainDensity(i);
+        mesh_.data(mesh_.face_handle(i)).set_strainDensity(strain);
+    }
+}
+
+double DevelopableMesh::faceStrainDensity(int faceid)
+{
+    Vector3d eedges[3];
+    Vector3d medges[3];
+    OMMesh::FaceHandle efh = mesh_.face_handle(faceid);
+    OMMesh::FaceHandle mfh = material_->getMesh().face_handle(faceid);
+    OMMesh::FaceHalfedgeIter mhei = material_->getMesh().fh_iter(mfh);
+    int ind=0;
+    for(OMMesh::FaceHalfedgeIter hei = mesh_.fh_iter(efh); hei; ++hei,++mhei,ind++)
+    {
+        OMMesh::VertexHandle efrom = mesh_.from_vertex_handle(hei.handle());
+        OMMesh::VertexHandle eto = mesh_.to_vertex_handle(hei.handle());
+        OMMesh::Point evec = mesh_.point(eto) - mesh_.point(efrom);
+        for(int j=0; j<3; j++)
+            eedges[ind][j] = evec[j];
+
+        OMMesh::VertexHandle mfrom = material_->getMesh().from_vertex_handle(mhei.handle());
+        OMMesh::VertexHandle mto = material_->getMesh().to_vertex_handle(mhei.handle());
+
+        OMMesh::Point mvec = material_->getMesh().point(mto) - material_->getMesh().point(mfrom);
+
+        Vector3d offset = material_->getOffset(mhei.handle());
+        for(int j=0; j<3; j++)
+            medges[ind][j] = mvec[j]+offset[j];
+    }
+
+    Vector3d s;
+    for(int j=0; j<3; j++)
+    {
+        s[j] = 0.5*(eedges[j].squaredNorm() - medges[j].squaredNorm());
+    }
+
+    double semi=0;
+    for(int j=0; j<3; j++)
+        semi += medges[j].norm();
+
+    semi/=2.0;
+
+    double prod = semi;
+    for(int j=0; j<3; j++)
+        prod *= semi-medges[j].norm();
+
+    double A = sqrt(prod);
+
+
+    Matrix3d T1,T2;
+    for(int j=0; j<3; j++)
+    {
+        for(int k=0; k<3; k++)
+        {
+            T1.coeffRef(j,k) = (
+                        (medges[(j+2)%3].dot(medges[(k+1)%3]))*(medges[(j+1)%3].dot(medges[(k+2)%3]))
+                    +
+                    (medges[(j+2)%3].dot(medges[(k+2)%3]))*(medges[(j+1)%3].dot(medges[(k+1)%3]))
+                    )/(32.0*A*A*A*A);
+            T2.coeffRef(j,k) = (
+                        medges[(j+1)%3].dot(medges[(j+2)%3])*medges[(k+1)%3].dot(medges[(k+2)%3])
+                    )/(16.0*A*A*A*A);
+        }
+    }
+
+    double result = 4000.0*s.transpose()*(T1+T2)*s;
+    if(faceid == 0)
+        cout << result << endl;
+    return result;
+}

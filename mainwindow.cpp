@@ -81,11 +81,13 @@ void MainWindow::saveScreenshot()
 void MainWindow::saveScreenshot(const string &filename)
 {
     updateGL();
-    QPixmap p = QPixmap::grabWidget(this);
+    QImage img = ui->GLwidget->grabFrameBuffer(true);
+
+    //QPixmap p = this->grab();
     QString curdir = QDir::currentPath();
     string fullname = string(curdir.toStdString()) + "/output/" + filename;
-    p.save(QString::fromUtf8(fullname.c_str()));
-    //ui->GLwidget->saveScreenshot(fullname);
+    //p.save(QString::fromUtf8(fullname.c_str()));
+    img.save(QString::fromUtf8(fullname.c_str()));
 }
 
 bool MainWindow::showWireframe() const
@@ -177,4 +179,10 @@ void MainWindow::on_actionSave_Simulation_triggered()
 {
     assert(cont_);
     cont_->saveSimulation();
+}
+
+void MainWindow::on_actionJitter_triggered()
+{
+    cont_->jitterMesh();
+    updateGL();
 }
