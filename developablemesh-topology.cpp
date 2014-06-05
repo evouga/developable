@@ -1,3 +1,4 @@
+#include "OpenMesh/Core/IO/MeshIO.hh"
 #include "developablemesh.h"
 #include "mathutil.h"
 #include <Eigen/Dense>
@@ -6,6 +7,99 @@
 
 using namespace Eigen;
 using namespace std;
+
+bool DevelopableMesh::loadOBJPair(const char *mesh3D, const char *mesh2D, double W, double H)
+{
+    OMMesh mesh1;
+
+    bool success = true;
+    OpenMesh::IO::Options opt;
+    success &= OpenMesh::IO::read_mesh(mesh1, mesh3D, opt);
+
+    OMMesh mesh2;
+    success &= OpenMesh::IO::read_mesh(mesh2, mesh2D, opt);
+
+    if(!success)
+        return false;
+
+    if(mesh1.n_vertices() != mesh2.n_vertices())
+        return false;
+
+    mesh_ = mesh1;
+
+    delete material_;
+    material_ = new MaterialMesh(H);
+    boundaries_.clear();
+
+    // fill material mesh
+    // first, the vertices
+    for(OMMesh::VertexIter vi = mesh2.vertices_begin(); vi != mesh2.vertices_end(); ++vi)
+    {
+        OMMesh::Point pt = mesh2.point(vi.handle());
+        material_->getMesh().add_vertex(pt);
+    }
+    // next, the faces
+    for(OMMesh::FaceIter fi = mesh1.faces_begin(); fi != mesh1.faces_end(); ++fi)
+    {
+        int faceverts[3];
+        int idx=0;
+        for(OMMesh::FaceVertexIter fvi = mesh1.fv_iter(fi.handle()); fvi; ++fvi)
+        {
+            faceverts[idx++] = fvi.handle().idx();
+        }
+
+        vector<OMMesh::VertexHandle> faceverth;
+        for(int i=0; i<3; i++)
+            faceverth.push_back(material_->getMesh().vertex_handle(faceverts[i]));
+        material_->getMesh().add_face(faceverth);
+    }
+    // last, the edges
+    for(OMMesh::EdgeIter ei = mesh_.edges_begin(); ei !=  mesh_.edges_end(); ++ei)
+    {
+        int embid = ei.handle().idx();
+        int v1 = mesh_.from_vertex_handle(mesh_.halfedge_handle(ei.handle(),0)).idx();
+        int v2 = mesh_.from_vertex_handle(mesh_.halfedge_handle(ei.handle(),1)).idx();
+        int matid = material_->findEdge(v1,v2);
+        material_->setMaterialEdge(embid, matid);
+
+        // edges that aren't in mesh2 wrap around
+        OMMesh::VertexHandle src = mesh2.vertex_handle(v1);
+        bool found = false;
+        for(OMMesh::VertexVertexIter vvi = mesh2.vv_iter(src); vvi; ++vvi)
+        {
+            if(vvi.handle().idx() == v2)
+            {
+                found = true;
+                break;
+            }
+        }
+        if(!found)
+        {
+            Vector3d offset(W, 0, 0);
+            material_->addOffset(material_->getMesh().halfedge_handle(material_->getMesh().edge_handle(matid),0), offset);
+        }
+    }
+
+    // add boundaries
+    set<int> visitedboundaries;
+    for(OMMesh::HalfedgeIter hi = mesh_.halfedges_begin(); hi != mesh_.halfedges_end(); ++hi)
+    {
+        if(!mesh_.is_boundary(hi.handle()) || visitedboundaries.count(hi.handle().idx()))
+            continue;
+
+        Boundary bd;
+        OMMesh::HalfedgeHandle heh = hi.handle();
+        while(!visitedboundaries.count(heh.idx()))
+        {
+            visitedboundaries.insert(heh.idx());
+            bd.bdryVerts.push_back(mesh_.from_vertex_handle(heh).idx());
+            bd.bdryPos.push_back(point2Vector(mesh_.point(mesh_.from_vertex_handle(heh))));
+            heh = mesh_.next_halfedge_handle(heh);
+        }
+        boundaries_.push_back(bd);
+    }
+    return true;
+}
 
 void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, double angle)
 {

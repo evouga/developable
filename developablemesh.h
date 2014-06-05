@@ -6,7 +6,7 @@
 #include <map>
 #include "mesh.h"
 #include <Eigen/Sparse>
-#include <fadiff.h>
+#include <FADBAD++/fadiff.h>
 #include "autodiffTemplates.h"
 #include "materialmesh.h"
 
@@ -33,6 +33,7 @@ public:
     enum CriticalPointType {CPT_INDETERMINATE, CPT_SADDLE, CPT_MAXIMUM, CPT_MINIMUM};
 
     void buildSchwarzLantern(double r, double h, int n, int m, double angle);
+    bool loadOBJPair(const char *mesh3D, const char *mesh2D, double W, double H);
     virtual bool loadFromStream(std::istream &is);
     virtual bool saveToStream(std::ostream &os);
 

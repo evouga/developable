@@ -1,7 +1,7 @@
 #include "developablemesh.h"
 #include <Eigen/Core>
-#include <fadbad.h>
-#include <fadiff.h>
+#include <FADBAD++/fadbad.h>
+#include <FADBAD++/fadiff.h>
 
 using namespace Eigen;
 using namespace fadbad;

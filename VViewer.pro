@@ -52,7 +52,7 @@ HEADERS += \
     staticsnlp.h \
     projectionnlp.h
 
-LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/build/Build/lib/OpenMesh/ -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt -lcoinhsl -lgfortran -lblas -llapack
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMeshLib -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt
 
 INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.3/include
 
