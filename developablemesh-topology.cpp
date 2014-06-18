@@ -75,8 +75,14 @@ bool DevelopableMesh::loadOBJPair(const char *mesh3D, const char *mesh2D, double
         }
         if(!found)
         {
+            // check halfedge orientation
+            OMMesh::HalfedgeHandle heh = material_->getMesh().halfedge_handle(material_->getMesh().edge_handle(matid),0);
+            OMMesh::Point destpt = material_->getMesh().point(material_->getMesh().to_vertex_handle(heh));
+            OMMesh::Point srcpt = material_->getMesh().point(material_->getMesh().from_vertex_handle(heh));
             Vector3d offset(W, 0, 0);
-            material_->addOffset(material_->getMesh().halfedge_handle(material_->getMesh().edge_handle(matid),0), offset);
+            if(destpt[0] > srcpt[0])
+                offset *= -1;
+            material_->addOffset(heh, offset);
         }
     }
 
