@@ -95,13 +95,13 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
         cross(e03,e01,n1);
         F<F<double> > A0 = norm(n0);
         F<F<double> > A1 = norm(n1);
-        normalize(n0);
-        normalize(n1);
-        F<F<double> > costheta = dot(n0,n1);
-        F<F<double> > n0crossn1[3];
-        cross(n0, n1, n0crossn1);
-        F<F<double> > sintheta = norm(n0crossn1);
-        F<F<double> > theta = atan2(sintheta,costheta);
+//        normalize(n0);
+//        normalize(n1);
+//        F<F<double> > costheta = dot(n0,n1);
+//        F<F<double> > n0crossn1[3];
+//        cross(n0, n1, n0crossn1);
+//        F<F<double> > sintheta = norm(n0crossn1);
+//        F<F<double> > theta = atan2(sintheta,costheta);
 
         F<F<double> > Lpart = 0;
 
@@ -110,11 +110,12 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
         else
             Lpart = pow(L, 1.0/3.0);
 
-        F<F<double> > anglepart = 0;
-        if(onboundary)
-            anglepart = theta*theta;
-        else
-            anglepart = pow(theta, 7.0/3.0);
+//        F<F<double> > anglepart = 0;
+//        if(onboundary)
+//            anglepart = theta*theta;
+//        else
+//            anglepart = pow(theta, 7.0/3.0);
+        double anglepart = 1;
         F<F<double> > stencilf = Lpart*anglepart;
         f += stencilf.val().val();
         assert(!isnan(f));
@@ -153,17 +154,17 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
         numconstraints++;
     }
 
-    // top and bottom verts have y values fixed
-    numconstraints += material_->getBoundaryVerts().size();
+//    // top and bottom verts have y values fixed
+//    numconstraints += material_->getBoundaryVerts().size();
 
-    // bottom verts have x values fixed
-    int numbottom = 0;
-    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
-    {
-        if(material_->getBoundaryVerts()[i].onBottom)
-            numbottom++;
-    }
-    numconstraints += numbottom;
+//    // bottom verts have x values fixed
+//    int numbottom = 0;
+//    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
+//    {
+//        if(material_->getBoundaryVerts()[i].onBottom)
+//            numbottom++;
+//    }
+//    numconstraints += numbottom;
 
     int numemb = 0;
     // top and bottom of embedded cylinder have values fixed
@@ -171,6 +172,7 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
         numemb += 3*boundaries_[i].bdryVerts.size();
     numconstraints += numemb;
 
+    // check on the following
 
     g.resize(numconstraints);
     g.setZero();
@@ -233,20 +235,6 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
         row++;
     }
 
-    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
-    {
-        MaterialBoundary &bdry = material_->getBoundaryVerts()[i];
-        Vector2d pos = bdry.getPos();
-        for(int j=(bdry.onBottom ? 0 : 1); j<2; j++)
-        {
-            g[row] = matq[2*bdry.vertid+j] - pos[j];
-            Dg.push_back(T(row, 3*nembverts+2*bdry.vertid+j, 1.0));
-            vector<T> Hgentry;
-            Hg.push_back(Hgentry);
-            row++;
-        }
-    }
-
     for(int i=0; i<(int)boundaries_.size(); i++)
     {
         for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
@@ -263,165 +251,166 @@ void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd
             }
         }
     }
+
     assert(row == numconstraints);
     assert((int)Hg.size() == numconstraints);
 }
 
 void DevelopableMesh::radiusOverlapConstraint(const Eigen::VectorXd &q, OMMesh::HalfedgeHandle heh1, double &g, std::vector<std::pair<int, double> > &Dg, std::vector<T> &Hg)
 {
-    const double k = 0.001;
+//    const double k = 0.001;
 
-    int offset = 3*mesh_.n_vertices();
+//    int offset = 3*mesh_.n_vertices();
 
-    OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
-    int vinds[3];
-    vinds[0] = material_->getMesh().to_vertex_handle(heh1).idx();
-    assert(vinds[0] == material_->getMesh().from_vertex_handle(heh2).idx());
+//    OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
+//    int vinds[3];
+//    vinds[0] = material_->getMesh().to_vertex_handle(heh1).idx();
+//    assert(vinds[0] == material_->getMesh().from_vertex_handle(heh2).idx());
 
-    vinds[1] = material_->getMesh().from_vertex_handle(heh1).idx();
-    vinds[2] = material_->getMesh().to_vertex_handle(heh2).idx();
+//    vinds[1] = material_->getMesh().from_vertex_handle(heh1).idx();
+//    vinds[2] = material_->getMesh().to_vertex_handle(heh2).idx();
 
-    F<double> vx[3][2];
-    F<F<double> > vxx[3][2];
-    for(int i=0; i<3; i++)
-    {
-        for(int j=0; j<2; j++)
-        {
-            vx[i][j] = q[offset+2*vinds[i]+j];
-            vx[i][j].diff(2*i+j, 6);
-            vxx[i][j] = vx[i][j];
-            vxx[i][j].diff(2*i+j, 6);
-        }
-    }
+//    F<double> vx[3][2];
+//    F<F<double> > vxx[3][2];
+//    for(int i=0; i<3; i++)
+//    {
+//        for(int j=0; j<2; j++)
+//        {
+//            vx[i][j] = q[offset+2*vinds[i]+j];
+//            vx[i][j].diff(2*i+j, 6);
+//            vxx[i][j] = vx[i][j];
+//            vxx[i][j].diff(2*i+j, 6);
+//        }
+//    }
 
-    F<F<double> > e1[2];
-    F<F<double> > e2[2];
-    diff2D(vxx[1],vxx[0],e1);
-    diff2D(vxx[2],vxx[0],e2);
-    for(int i=0; i<2; i++)
-    {
-        e1[i] -= material_->getOffset(heh1)[i];
-        e2[i] += material_->getOffset(heh2)[i];
-    }
+//    F<F<double> > e1[2];
+//    F<F<double> > e2[2];
+//    diff2D(vxx[1],vxx[0],e1);
+//    diff2D(vxx[2],vxx[0],e2);
+//    for(int i=0; i<2; i++)
+//    {
+//        e1[i] -= material_->getOffset(heh1)[i];
+//        e2[i] += material_->getOffset(heh2)[i];
+//    }
 
-    F<F<double> > Ldot = dot2D(e1, e2);
+//    F<F<double> > Ldot = dot2D(e1, e2);
 
-    F<F<double> > L1 = norm2D(e1);
-    F<F<double> > L2 = norm2D(e2);
+//    F<F<double> > L1 = norm2D(e1);
+//    F<F<double> > L2 = norm2D(e2);
 
-    F<F<double> > num = L1*L2*(pow(L1, 1.0/3.0) * pow(L2, 1.0/3.0) - 4*k*k);
-    F<F<double> > denom = sqrt( (pow(L1, 2.0/3.0)+4*k*k)*(pow(L2,2.0/3.0)+4*k*k));
-    F<F<double> > val = num/denom - Ldot;
+//    F<F<double> > num = L1*L2*(pow(L1, 1.0/3.0) * pow(L2, 1.0/3.0) - 4*k*k);
+//    F<F<double> > denom = sqrt( (pow(L1, 2.0/3.0)+4*k*k)*(pow(L2,2.0/3.0)+4*k*k));
+//    F<F<double> > val = num/denom - Ldot;
 
-    g = val.val().val();
+//    g = val.val().val();
 
-    for(int i=0; i<3; i++)
-    {
-        for(int j=0; j<2; j++)
-        {
-            Dg.push_back(std::pair<int, double>(offset+2*vinds[i]+j, val.deriv(2*i+j).val()));
-            for(int k=0; k<3; k++)
-            {
-                for(int l=0; l<2; l++)
-                {
-                    if(2*vinds[i]+j <= 2*vinds[k]+l)
-                    {
-                        Hg.push_back(T(offset+2*vinds[i]+j, offset+2*vinds[k]+l, val.deriv(2*i+j).deriv(2*k+l)));
-                    }
-                }
-            }
-        }
-    }
+//    for(int i=0; i<3; i++)
+//    {
+//        for(int j=0; j<2; j++)
+//        {
+//            Dg.push_back(std::pair<int, double>(offset+2*vinds[i]+j, val.deriv(2*i+j).val()));
+//            for(int k=0; k<3; k++)
+//            {
+//                for(int l=0; l<2; l++)
+//                {
+//                    if(2*vinds[i]+j <= 2*vinds[k]+l)
+//                    {
+//                        Hg.push_back(T(offset+2*vinds[i]+j, offset+2*vinds[k]+l, val.deriv(2*i+j).deriv(2*k+l)));
+//                    }
+//                }
+//            }
+//        }
+//    }
 }
 
 void DevelopableMesh::buildInversionConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &h, std::vector<T> &Dh, std::vector<std::vector<T> > &Hh)
 {
-    int f = 0;
-    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
-        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
-            f += 2;
-    h.resize(f);
-    h.setZero();
-    Dh.clear();
-    Hh.clear();
+//    int f = 0;
+//    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
+//        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
+//            f += 2;
+//    h.resize(f);
+//    h.setZero();
+//    Dh.clear();
+//    Hh.clear();
 
-    int offset = 3*mesh_.n_vertices();
+//    int offset = 3*mesh_.n_vertices();
 
-    int row = 0;
-    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
-    {
-        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
-        {
-            OMMesh::HalfedgeHandle heh1 = fhi.handle();
-            OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
-            int centv = material_->getMesh().to_vertex_handle(heh1).idx();
-            assert(centv == material_->getMesh().from_vertex_handle(heh2).idx());
-            int v1 = material_->getMesh().from_vertex_handle(heh1).idx();
-            int v2 = material_->getMesh().to_vertex_handle(heh2).idx();
-            Vector2d e1 = q.segment<2>(offset+2*v1) - q.segment<2>(offset+2*centv);
-            e1 -= material_->getOffset(heh1).segment<2>(0);
-            Vector2d e2 = q.segment<2>(offset+2*v2) - q.segment<2>(offset+2*centv);
-            e2 += material_->getOffset(heh2).segment<2>(0);
-            Vector2d emid = e2 - e1;
-            h[row] = -e1[0]*e2[1] + e1[1]*e2[0];
-            Dh.push_back(T(row, offset+2*v1, -e2[1]));
-            Dh.push_back(T(row, offset+2*v1+1, e2[0]));
-            Dh.push_back(T(row, offset+2*v2, e1[1]));
-            Dh.push_back(T(row, offset+2*v2+1, -e1[0]));
-            Dh.push_back(T(row, offset+2*centv, emid[1]));
-            Dh.push_back(T(row, offset+2*centv+1, -emid[0]));
-            vector<T> Hhpart;
-            if(2*v1 <= 2*v2+1)
-                Hhpart.push_back(T(offset+2*v1, offset+2*v2+1, -1.0));
-            else
-                Hhpart.push_back(T(offset+2*v2+1, offset+2*v1, -1.0));
+//    int row = 0;
+//    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
+//    {
+//        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
+//        {
+//            OMMesh::HalfedgeHandle heh1 = fhi.handle();
+//            OMMesh::HalfedgeHandle heh2 = material_->getMesh().next_halfedge_handle(heh1);
+//            int centv = material_->getMesh().to_vertex_handle(heh1).idx();
+//            assert(centv == material_->getMesh().from_vertex_handle(heh2).idx());
+//            int v1 = material_->getMesh().from_vertex_handle(heh1).idx();
+//            int v2 = material_->getMesh().to_vertex_handle(heh2).idx();
+//            Vector2d e1 = q.segment<2>(offset+2*v1) - q.segment<2>(offset+2*centv);
+//            e1 -= material_->getOffset(heh1).segment<2>(0);
+//            Vector2d e2 = q.segment<2>(offset+2*v2) - q.segment<2>(offset+2*centv);
+//            e2 += material_->getOffset(heh2).segment<2>(0);
+//            Vector2d emid = e2 - e1;
+//            h[row] = -e1[0]*e2[1] + e1[1]*e2[0];
+//            Dh.push_back(T(row, offset+2*v1, -e2[1]));
+//            Dh.push_back(T(row, offset+2*v1+1, e2[0]));
+//            Dh.push_back(T(row, offset+2*v2, e1[1]));
+//            Dh.push_back(T(row, offset+2*v2+1, -e1[0]));
+//            Dh.push_back(T(row, offset+2*centv, emid[1]));
+//            Dh.push_back(T(row, offset+2*centv+1, -emid[0]));
+//            vector<T> Hhpart;
+//            if(2*v1 <= 2*v2+1)
+//                Hhpart.push_back(T(offset+2*v1, offset+2*v2+1, -1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*v2+1, offset+2*v1, -1.0));
 
-            if(2*v1+1 <= 2*v2)
-                Hhpart.push_back(T(offset+2*v1+1, offset+2*v2, 1.0));
-            else
-                Hhpart.push_back(T(offset+2*v2, offset+2*v1+1, 1.0));
+//            if(2*v1+1 <= 2*v2)
+//                Hhpart.push_back(T(offset+2*v1+1, offset+2*v2, 1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*v2, offset+2*v1+1, 1.0));
 
-            if(2*v1 <= 2*centv+1)
-                Hhpart.push_back(T(offset+2*v1, offset+2*centv+1, 1.0));
-            else
-                Hhpart.push_back(T(offset+2*centv+1, offset+2*v1, 1.0));
+//            if(2*v1 <= 2*centv+1)
+//                Hhpart.push_back(T(offset+2*v1, offset+2*centv+1, 1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*centv+1, offset+2*v1, 1.0));
 
-            if(2*v1+1 <= 2*centv)
-                Hhpart.push_back(T(offset+2*v1+1, offset+2*centv, -1.0));
-            else
-                Hhpart.push_back(T(offset+2*centv, offset+2*v1+1, -1.0));
+//            if(2*v1+1 <= 2*centv)
+//                Hhpart.push_back(T(offset+2*v1+1, offset+2*centv, -1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*centv, offset+2*v1+1, -1.0));
 
-            if(2*v2 <= 2*centv+1)
-                Hhpart.push_back(T(offset+2*v2, offset+2*centv+1, -1.0));
-            else
-                Hhpart.push_back(T(offset+2*centv+1, offset+2*v2, -1.0));
+//            if(2*v2 <= 2*centv+1)
+//                Hhpart.push_back(T(offset+2*v2, offset+2*centv+1, -1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*centv+1, offset+2*v2, -1.0));
 
-            if(2*v2+1 <= 2*centv)
-                Hhpart.push_back(T(offset+2*v2+1, offset+2*centv, 1.0));
-            else
-                Hhpart.push_back(T(offset+2*centv, offset+2*v2+1, 1.0));
-            Hh.push_back(Hhpart);
-            row++;
-        }
-    }
+//            if(2*v2+1 <= 2*centv)
+//                Hhpart.push_back(T(offset+2*v2+1, offset+2*centv, 1.0));
+//            else
+//                Hhpart.push_back(T(offset+2*centv, offset+2*v2+1, 1.0));
+//            Hh.push_back(Hhpart);
+//            row++;
+//        }
+//    }
 
-    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
-    {
-        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
-        {
-            OMMesh::HalfedgeHandle heh1 = fhi.handle();
-            vector<pair<int, double> > Dg;
-            vector<T> Hgpart;
-            radiusOverlapConstraint(q, heh1, h[row], Dg, Hgpart);
-            for(vector<pair<int, double> >::iterator it = Dg.begin(); it != Dg.end(); ++it)
-            {
-                Dh.push_back(T(row, it->first, it->second));
-            }
-            Hh.push_back(Hgpart);
-            row++;
-        }
-    }
-    assert(row == (int)h.size());
-    assert(row == (int)Hh.size());
+//    for(OMMesh::FaceIter fi = material_->getMesh().faces_begin(); fi != material_->getMesh().faces_end(); ++fi)
+//    {
+//        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fi); fhi; ++fhi)
+//        {
+//            OMMesh::HalfedgeHandle heh1 = fhi.handle();
+//            vector<pair<int, double> > Dg;
+//            vector<T> Hgpart;
+//            radiusOverlapConstraint(q, heh1, h[row], Dg, Hgpart);
+//            for(vector<pair<int, double> >::iterator it = Dg.begin(); it != Dg.end(); ++it)
+//            {
+//                Dh.push_back(T(row, it->first, it->second));
+//            }
+//            Hh.push_back(Hgpart);
+//            row++;
+//        }
+//    }
+//    assert(row == (int)h.size());
+//    assert(row == (int)Hh.size());
 }
 

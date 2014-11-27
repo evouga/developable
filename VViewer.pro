@@ -52,9 +52,9 @@ HEADERS += \
     staticsnlp.h \
     projectionnlp.h
 
-LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMeshLib -lOpenMeshCore -L/home/etienne/Ipopt-3.10.3/build/lib -lipopt
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/lib -lOpenMeshCored
 
-INCLUDEPATH    += $${PWD}/ext/eigen/ $${PWD}/ext/OpenMesh/src $${PWD}/ext/FADBAD /home/etienne/Ipopt-3.10.3/include
+INCLUDEPATH    += $${PWD}/ext/ $${PWD}/ext/OpenMesh/include $${PWD}/FADBAD++
 
 macx {
     ## png from macports (X11 png didn't work) and GLU from OpenGL.framework

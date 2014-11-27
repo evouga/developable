@@ -150,19 +150,35 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
 
-    ProjectionNLP *pnlp = new ProjectionNLP(*this, dc, q);
 
-    IpoptApplication app;
-    app.Options()->SetNumericValue("tol", 1e-6);
-    //app.Options()->SetStringValue("derivative_test", "second-order");
-    app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
-    app.Initialize();
-    app.OptimizeTNLP(pnlp);
-    q = pnlp->getFinalQ();
+//    WarpedMesh warped;
+//    while(error > energyThreshold)
+//    {
 
-    flushOutNANs(q);
+//        warpMaterialToEmbedded(q, warped);
+//        averageWarpedEmbeddedMesh(q, warped);
 
-    cout << "Final equality violation: " << equalityConstraintViolation(q) << endl;
+//        warpEmbeddedToMaterial(q, warped);
+//        averageWarpedMaterialMesh(q, warped);
+//        iter++;
+
+//        enforceBoundaryConstraints(q);
+
+//        double newerror = equalityConstraintViolation(q);
+
+//        if(fabs(newerror-error) < slopeThreshold)
+//        {
+//            stalled = true;
+//            error = newerror;
+//            break;
+//        }
+//        error = newerror;
+//        if(iter > maxiters)
+//            break;
+
+//    }
+//    cout << (stalled ? "Stalled " : "Converged ") << "after " << iter << " iterations: " << error;
+//    cout << endl;
 
     repopulateDOFs(q,v);
 }
@@ -173,7 +189,6 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
     int steps = (int)(1.0/crushspeed/dt);
     int framestep = steps/1000;
     VectorXd q, v;
-    gatherDOFs(q,v);
 
     for(int i=0; i<steps; i++)
     {
@@ -188,41 +203,8 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
         }
         projectOntoConstraintManifold(dc);
 
-        int collapseid = findCollapsibleEdge(q);
-        while(collapseid != -1)
-        {
-            cout << "Collapse!" << endl;
-            assert(canCollapseEdge(collapseid));
-            collapseEdge(collapseid);
-            projectOntoConstraintManifold(dc);
-            collapseid = findCollapsibleEdge(q);
-        }
         gatherDOFs(q, v);
 
-        double f;
-        VectorXd Df;
-        vector<T> Hf;
-        buildObjective(q, f, Df, Hf);
-        v += -dt*k*Df;
-        if(i%framestep == 0)
-            dc.repaintCallback();
-    }
-    repopulateDOFs(q,v);
-}
-
-void DevelopableMesh::deformLantern(DeformCallback &dc)
-{
-    bool keepgoing = true;
-    while(keepgoing)
-    {
-        VectorXd q;
-        VectorXd v;
-        gatherDOFs(q,v);
-
-        cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
-
-        int inequalities = activeInequalityConstraints(q);
-        cout << "Active inequality constraints: " << inequalities << endl;
         double f;
         VectorXd Df;
         vector<T> Hf;
@@ -596,4 +578,19 @@ void DevelopableMesh::gatherInfo(const Eigen::VectorXd &q)
     vector<VectorXd> normalspace, tangentspace;
     buildConstraintBasis(q, normalspace, tangentspace);
     cout << "Tangent space is " << tangentspace.size() << " dimensional" << endl;
+}
+
+void DevelopableMesh::jitter(double r)
+{
+    for(OMMesh::VertexIter vi = mesh_.vertices_begin(); vi != mesh_.vertices_end(); ++vi)
+    {
+        OMMesh::Point &pt = mesh_.point(*vi);
+        for(int i=0; i<3; i++)
+            pt[i] += MathUtil::randomDouble(0, r/sqrt(3.0));
+    }
+    Eigen::VectorXd q, v;
+    gatherDOFs(q, v);
+    enforceBoundaryConstraints(q);
+    setStrains();
+    repopulateDOFs(q,v);
 }

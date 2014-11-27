@@ -1,6 +1,7 @@
 #ifndef __YImage_hpp__
 #define __YImage_hpp__
 
+#include<cstring>
 class YImage
 {
 public:
