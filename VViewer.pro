@@ -29,7 +29,6 @@ SOURCES += main.cpp \
     developablemesh-topology.cpp \
     mathutil.cpp \
     materialmesh.cpp \
-    staticsnlp.cpp \
     projectionnlp.cpp
 
 HEADERS += \
@@ -49,10 +48,9 @@ HEADERS += \
     periodicmesh.h \
     mathutil.h \
     materialmesh.h \
-    staticsnlp.h \
     projectionnlp.h
 
-LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/lib -lOpenMeshCored
+LIBS    += -lGLU -lpng -L$${PWD}/ext/OpenMesh/lib -lOpenMeshCored -L/Users/work/libs/ipopt//lib -L/usr/local/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0 -L/usr/local/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0/../../.. -L/Users/work/libs/ipopt//lib -lipopt -framework vecLib -lm -ldl -lcoinmumps -framework vecLib -lgfortran -lSystem -lquadmath -lm -lcoinmetis
 
 INCLUDEPATH    += $${PWD}/ext/ $${PWD}/ext/OpenMesh/include $${PWD}/FADBAD++
 

@@ -18,18 +18,20 @@ bool ProjectionNLP::get_nlp_info(Ipopt::Index &n, Ipopt::Index &m, Ipopt::Index 
     vector<vector<T> > Hg;
     dm_.buildConstraints(startq_, g, Dg, Hg);
 
-    VectorXd h;
-    vector<T> Dh;
-    vector<vector<T> > Hh;
-    dm_.buildInversionConstraints(startq_, h, Dh, Hh);
+//    VectorXd h;
+//    vector<T> Dh;
+//    vector<vector<T> > Hh;
+//    dm_.buildInversionConstraints(startq_, h, Dh, Hh);
 
-    m = g.size() + h.size();
-    nnz_jac_g = Dg.size() + Dh.size();
+//    m = g.size() + h.size();
+    m = g.size();
+//    nnz_jac_g = Dg.size() + Dh.size();
+    nnz_jac_g = Dg.size();
 
     for(int i=0; i<(int)Hg.size(); i++)
         nnz_h_lag += Hg[i].size();
-    for(int i=0; i<(int)Hh.size(); i++)
-        nnz_h_lag += Hh[i].size();
+//    for(int i=0; i<(int)Hh.size(); i++)
+//        nnz_h_lag += Hh[i].size();
 
     index_style = C_STYLE;
 
@@ -114,12 +116,12 @@ bool ProjectionNLP::eval_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
     dm_.buildConstraints(q, Vg, dummyM, dummyH);
     for(int i=0; i<(int)Vg.size(); i++)
         g[i] = Vg[i];
-    VectorXd h;
-    dm_.buildInversionConstraints(q, h, dummyM, dummyH);
-    for(int i=0; i<(int)h.size(); i++)
-    {
-        g[i+Vg.size()] = h[i];
-    }
+//    VectorXd h;
+//    dm_.buildInversionConstraints(q, h, dummyM, dummyH);
+//    for(int i=0; i<(int)h.size(); i++)
+//    {
+//        g[i+Vg.size()] = h[i];
+//    }
 
     return true;
 }
@@ -138,16 +140,16 @@ bool ProjectionNLP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ip
             iRow[i] = Dg[i].row();
             jCol[i] = Dg[i].col();
         }
-        VectorXd h;
-        vector<T> Dh;
-        vector<vector<T> > Hh;
-        dm_.buildInversionConstraints(startq_, h, Dh, Hh);
+//        VectorXd h;
+//        vector<T> Dh;
+//        vector<vector<T> > Hh;
+//        dm_.buildInversionConstraints(startq_, h, Dh, Hh);
 
-        for(int i=0; i<(int)Dh.size(); i++)
-        {
-            iRow[i+Dg.size()] = g.size() + Dh[i].row();
-            jCol[i+Dg.size()] = Dh[i].col();
-        }
+//        for(int i=0; i<(int)Dh.size(); i++)
+//        {
+//            iRow[i+Dg.size()] = g.size() + Dh[i].row();
+//            jCol[i+Dg.size()] = Dh[i].col();
+//        }
     }
     else
     {
@@ -161,12 +163,12 @@ bool ProjectionNLP::eval_jac_g(Ipopt::Index n, const Ipopt::Number *x, bool , Ip
         dm_.buildConstraints(q, g, Dg, Hg);
         for(int i=0; i<(int)Dg.size(); i++)
             values[i] = Dg[i].value();
-        VectorXd h;
-        vector<T> Dh;
-        vector<vector<T> > Hh;
-        dm_.buildInversionConstraints(q, h, Dh, Hh);
-        for(int i=0; i<(int)Dh.size(); i++)
-            values[i+Dg.size()] = Dh[i].value();
+//        VectorXd h;
+//        vector<T> Dh;
+//        vector<vector<T> > Hh;
+//        dm_.buildInversionConstraints(q, h, Dh, Hh);
+//        for(int i=0; i<(int)Dh.size(); i++)
+//            values[i+Dg.size()] = Dh[i].value();
     }
 
     return true;
@@ -180,11 +182,12 @@ bool ProjectionNLP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
         vector<T> Dg;
         vector<vector<T> > Hg;
         dm_.buildConstraints(startq_, g, Dg, Hg);
-        VectorXd h;
-        vector<T> Dh;
-        vector<vector<T> > Hh;
-        dm_.buildInversionConstraints(startq_, h, Dh, Hh);
-        assert((int)Hg.size() + (int)Hh.size() == m);
+//        VectorXd h;
+//        vector<T> Dh;
+//        vector<vector<T> > Hh;
+//        dm_.buildInversionConstraints(startq_, h, Dh, Hh);
+//        assert((int)Hg.size() + (int)Hh.size() == m);
+        assert((int)Hg.size() == m);
 
         int row=0;
         for(int i=0; i<n; i++)
@@ -203,15 +206,15 @@ bool ProjectionNLP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
                 row++;
             }
         }
-        for(int i=0; i<(int)Hh.size(); i++)
-        {
-            for(int j=0; j<(int)Hh[i].size(); j++)
-            {
-                iRow[row] = Hh[i][j].row();
-                jCol[row] = Hh[i][j].col();
-                row++;
-            }
-        }
+//        for(int i=0; i<(int)Hh.size(); i++)
+//        {
+//            for(int j=0; j<(int)Hh[i].size(); j++)
+//            {
+//                iRow[row] = Hh[i][j].row();
+//                jCol[row] = Hh[i][j].col();
+//                row++;
+//            }
+//        }
         assert(row == nele_hess);
     }
     else
@@ -226,10 +229,10 @@ bool ProjectionNLP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
         vector<T> Dg;
         vector<vector<T> > Hg;
         dm_.buildConstraints(q, g, Dg, Hg);
-        VectorXd h;
-        vector<T> Dh;
-        vector<vector<T> > Hh;
-        dm_.buildInversionConstraints(q, h, Dh, Hh);
+//        VectorXd h;
+//        vector<T> Dh;
+//        vector<vector<T> > Hh;
+//        dm_.buildInversionConstraints(q, h, Dh, Hh);
 
         for(int i=0; i<n; i++)
         {
@@ -245,14 +248,14 @@ bool ProjectionNLP::eval_h(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
                 row++;
             }
         }
-        for(int i=0; i<(int)Hh.size(); i++)
-        {
-            for(int j=0; j<(int)Hh[i].size(); j++)
-            {
-                values[row] = lambda[i+Hg.size()]*Hh[i][j].value();
-                row++;
-            }
-        }
+//        for(int i=0; i<(int)Hh.size(); i++)
+//        {
+//            for(int j=0; j<(int)Hh[i].size(); j++)
+//            {
+//                values[row] = lambda[i+Hg.size()]*Hh[i][j].value();
+//                row++;
+//            }
+//        }
         assert(row == nele_hess);
     }
 

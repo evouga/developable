@@ -115,7 +115,7 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
     double b = sqrt(4*r*r*sin(alpha/2.0)*sin(alpha/2.0) + h*h/m/m);
     double c = sqrt(4*r*r*sin(MathUtil::PI/n + alpha/2.0)*sin(MathUtil::PI/n + alpha/2.0) + h*h/m/m);
     double costilt = (a*a+b*b-c*c)/(2*a*b);
-//    double dpx = -b*costilt;
+    double dpx = -b*costilt;
 
 
     double s = 0.5*(a+b+c);
@@ -137,7 +137,7 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
     {
         double z = h*i/m;
 //        double basepx = i*dpx;
-        double py = i*dpy;
+//        double py = i*dpy;
 
         for(int j=0; j<n; j++)
         {
@@ -213,10 +213,10 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
 
             fidx2 = fidx3;
             newface[1] = mesh_.vertex_handle(fidx2);
-            newmatface[1] = material_->getMesh().vertex_handle(fidx2);
+//            newmatface[1] = material_->getMesh().vertex_handle(fidx2);
             fidx3 = (i+1)*n + j;
             newface[2] = mesh_.vertex_handle(fidx3);
-            newmatface[2] = material_->getMesh().vertex_handle(fidx3);
+//            newmatface[2] = material_->getMesh().vertex_handle(fidx3);
             mesh_.add_face(newface);
 //            material_->getMesh().add_face(newmatface);
 
@@ -239,16 +239,16 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
         }
     }
 
-    for(int i=0; i<(int)mesh_.n_edges(); i++)
-    {
-        double len1 = edgeLength(i);
+//    for(int i=0; i<(int)mesh_.n_edges(); i++)
+//    {
+//        double len1 = edgeLength(i);
 
-        int medge = material_->materialEdge(i);
+//        int medge = material_->materialEdge(i);
 
-        double len2 = material_->edgeLength(medge);
+//        double len2 = material_->edgeLength(medge);
 
-        assert(fabs(len1-len2) < 1e-6);
-    }
+//        assert(fabs(len1-len2) < 1e-6);
+//    }
 
 //    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
 //    {
@@ -480,11 +480,8 @@ bool DevelopableMesh::canCollapseEdge(int eid)
 
 int DevelopableMesh::findCollapsibleEdge(const Eigen::VectorXd &q)
 {
-<<<<<<< Updated upstream
-    const double constrtol = 0.01;
-=======
+
 //    const double constrtol = 0.001;
->>>>>>> Stashed changes
 
 //    for(OMMesh::HalfedgeIter hei = mesh_.halfedges_begin(); hei != mesh_.halfedges_end(); ++hei)
 //    {
