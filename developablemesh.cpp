@@ -149,12 +149,13 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
     cout << "Initial equality violation: " << equalityConstraintViolation(q) << endl;
 
-    ProjectionNLP *pnlp = new ProjectionNLP(*this, dc, q);
+    SmartPtr<ProjectionNLP> pnlp = new ProjectionNLP(*this, dc, q);
 
     IpoptApplication app;
-    app.Options()->SetNumericValue("tol", 1e-6);
-    //app.Options()->SetStringValue("derivative_test", "second-order");
-    app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
+//    app.Options()->SetNumericValue("tol", 1e-9);
+//    app.Options()->SetNumericValue(tol, 1e-6);
+//    app.Options()->SetStringValue("derivative_test", "second_order");
+//    app.Options()->SetStringValue("check_derivatives_for_naninf", "yes");
 
     app.Initialize();
 
@@ -171,25 +172,38 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
 void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
 {
-//    double crushspeed = 0.1;
-//    int steps = (int)(1.0/crushspeed/dt);
-    int steps = 1;
-//    int framestep = steps/1000;
-    int framestep = steps;
+    double crushspeed = 0.1;
+    int steps = (int)(1.0/crushspeed/dt);
+//    int steps = 100;
+    int framestep = steps/1000;
+//    int framestep = steps;
     VectorXd q, v;
     gatherDOFs(q,v);
+
+    for(int j=0; j<(int)boundaries_[0].bdryPos.size(); j++)
+    {
+            cout << j << "\t" << boundaries_[0].bdryVerts[j] << " " << boundaries_[0].bdryPos[j][2] << endl;
+    }
+    for(int j=0; j<(int)boundaries_[1].bdryPos.size(); j++)
+    {
+        cout << j << "\t" << boundaries_[1].bdryVerts[j] << " " << boundaries_[1].bdryPos[j][2] << endl;
+    }
+    cout << boundaries_[0].bdryVerts.size() << endl;
+    cout << boundaries_[1].bdryVerts.size() << endl;
+    cout << "Closing distance error: " << q.segment<3>(3*boundaries_[0].bdryVerts[4]) << " vs " << q.segment<3>(boundaries_[0].bdryVerts[0]) << endl;
+    cout << "Constraint violation: " << equalityConstraintViolation(q) << endl;
 
     cout << "crushing!" << endl;
     for(int i=0; i<steps; i++)
     {
-        v *= 0.9;
-        double k = 100;
-        q += dt*v;
-        repopulateDOFs(q, v);
-//        for(int j=0; j<(int)boundaries_[1].bdryPos.size(); j++)
-//        {
-//                boundaries_[1].bdryPos[j][2] -= crushspeed*dt;
-//        }
+//        v *= 0.9;
+//        double k = 100;
+//        q += dt*v;
+//        repopulateDOFs(q, v);
+        for(int j=0; j<(int)boundaries_[1].bdryPos.size(); j++)
+        {
+                boundaries_[1].bdryPos[j][2] -= crushspeed*dt;
+        }
         cout << "Projecting!" << endl;
         projectOntoConstraintManifold(dc);
 
@@ -204,16 +218,32 @@ void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
 //        }
 //        gatherDOFs(q, v);
 
-        double f;
-        VectorXd Df;
-        vector<T> Hf;
-        buildObjective(q, f, Df, Hf);
-        v += -dt*k*Df;
+//        double f;
+//        VectorXd Df;
+//        vector<T> Hf;
+//        buildObjective(q, f, Df, Hf);
+//        v += -dt*k*Df;
         if(i%framestep == 0)
             dc.repaintCallback();
     }
-    repopulateDOFs(q,v);
+//    repopulateDOFs(q,v);
+    gatherDOFs(q,v);
+
+    for(int i = 0; i < (int)boundaries_.size(); i++)
+    {
+        for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
+        {
+            cout << j << "th vector should\n" << boundaries_[i].bdryPos[j] << endl;
+            cout << j << "th vector is\n" << q.segment<3>(3*boundaries_[i].bdryVerts[j]) << endl;
+        }
+    }
+    cout << "Crushed!" << endl;
+    cout << "Closing points error: " << q.segment<3>(3*4) << " vs " << q.segment<3>(0) << endl;
+    cout << "Closing distance error: " << (q.segment<3>(3*4)-q.segment<3>(0)).squaredNorm()<< endl;
+    cout << "Constraint violation: " << equalityConstraintViolation(q) << endl;
 }
+
+
 
 bool DevelopableMesh::shouldCollapseEdges(const Eigen::VectorXd &q)
 {
@@ -244,7 +274,7 @@ double DevelopableMesh::materialRadius()
         OMMesh::Point pt = material_->getMesh().point(vh);
         Vector2d vpt(pt[0],pt[1]);
         maxradius = max(maxradius, (center-vpt).norm());
-        for(OMMesh::VertexOHalfedgeIter voh = material_->getMesh().voh_iter(vh); voh; ++voh)
+        for(OMMesh::VertexOHalfedgeIter voh = material_->getMesh().voh_iter(vh); voh.is_valid(); ++voh)
         {
             OMMesh::HalfedgeHandle heh = voh.handle();
             OMMesh::Point adjompt = material_->getMesh().point(material_->getMesh().to_vertex_handle(heh));
@@ -258,37 +288,37 @@ double DevelopableMesh::materialRadius()
 
 void DevelopableMesh::renderMaterial()
 {
-    glColor3f(0.0,0.0,0.0);
-    glBegin(GL_LINES);
-    for(int i=0; i<(int)material_->getMesh().n_halfedges(); i++)
-    {
-        OMMesh::HalfedgeHandle heh = material_->getMesh().halfedge_handle(i);
-        OMMesh::Point pt1 = material_->getMesh().point(material_->getMesh().from_vertex_handle(heh));
-        OMMesh::Point pt2 = material_->getMesh().point(material_->getMesh().to_vertex_handle(heh));
-        Vector3d offset = material_->getOffset(heh);
-        glVertex2d(pt1[0], pt1[1]);
-        glVertex2d(pt2[0] + offset[0], pt2[1] + offset[1]);
-    }
-    glEnd();
+//    glColor3f(0.0,0.0,0.0);
+//    glBegin(GL_LINES);
+//    for(int i=0; i<(int)material_->getMesh().n_halfedges(); i++)
+//    {
+//        OMMesh::HalfedgeHandle heh = material_->getMesh().halfedge_handle(i);
+//        OMMesh::Point pt1 = material_->getMesh().point(material_->getMesh().from_vertex_handle(heh));
+//        OMMesh::Point pt2 = material_->getMesh().point(material_->getMesh().to_vertex_handle(heh));
+//        Vector3d offset = material_->getOffset(heh);
+//        glVertex2d(pt1[0], pt1[1]);
+//        glVertex2d(pt2[0] + offset[0], pt2[1] + offset[1]);
+//    }
+//    glEnd();
 
-    glPointSize(6.0);
-    glBegin(GL_POINTS);
-    for(int i=0; i<(int)material_->getMesh().n_vertices(); i++)
-    {
-        glColor3f(0.2, 0.0, 1.0);
-        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(i);
-        OMMesh::Point pt = material_->getMesh().point(vh);
-        glVertex2d(pt[0], pt[1]);
-    }
-    glColor3f(1.0, 0.0, 0.0);
-    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
-    {
-        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].vertid);
-        OMMesh::Point pt = material_->getMesh().point(vh);
-        glVertex2d(pt[0], pt[1]);
-    }
-    glEnd();
-    glPointSize(1.0);
+//    glPointSize(6.0);
+//    glBegin(GL_POINTS);
+//    for(int i=0; i<(int)material_->getMesh().n_vertices(); i++)
+//    {
+//        glColor3f(0.2, 0.0, 1.0);
+//        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(i);
+//        OMMesh::Point pt = material_->getMesh().point(vh);
+//        glVertex2d(pt[0], pt[1]);
+//    }
+//    glColor3f(1.0, 0.0, 0.0);
+//    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
+//    {
+//        OMMesh::VertexHandle vh = material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].vertid);
+//        OMMesh::Point pt = material_->getMesh().point(vh);
+//        glVertex2d(pt[0], pt[1]);
+//    }
+//    glEnd();
+//    glPointSize(1.0);
 }
 
 void DevelopableMesh::gatherDOFs(Eigen::VectorXd &q, Eigen::VectorXd &v)

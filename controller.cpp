@@ -13,7 +13,7 @@ using namespace Eigen;
 
 Controller::Controller(MainWindow &mw) : mw_(mw), m_()
 {
-    m_.buildSchwarzLantern(1.0, 3.0, 4, 4, 3.14159/4);
+    m_.buildOpenSchwarzLantern(1.0, 3.0, 4, 4, 3.14159/4.0);
 }
 
 void Controller::quit()
@@ -71,8 +71,15 @@ void Controller::newSchwarzLantern()
     int m = 3;
     //double angle = 3.14159/n;
     double angle = -6.28319;
-    mw_.launchSchwarzLanternDialog(r, h, n, m, angle);
-    m_.buildSchwarzLantern(r, h, n, m, angle);
+    bool open = FALSE;
+    bool springs = FALSE;
+    mw_.launchSchwarzLanternDialog(r, h, n, m, angle,open,springs);
+//    if(open){
+//        m_.buildOpenSchwarzLantern(r, h, n, m, angle,springs);
+//    }
+//    else{
+    m_.buildSchwarzLantern(r,h,n,m,angle,open,springs);
+//    }
     mw_.centerCamera();
 }
 

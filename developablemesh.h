@@ -32,7 +32,8 @@ public:
 
     enum CriticalPointType {CPT_INDETERMINATE, CPT_SADDLE, CPT_MAXIMUM, CPT_MINIMUM};
 
-    void buildSchwarzLantern(double r, double h, int n, int m, double angle);
+    void buildSchwarzLantern(double r, double h, int n, int m, double angle, bool open, bool springs);
+    void buildOpenSchwarzLantern(double r, double h, int n, int m, double angle);
     bool loadOBJPair(const char *mesh3D, const char *mesh2D, double W, double H);
     virtual bool loadFromStream(std::istream &is);
     virtual bool saveToStream(std::ostream &os);
@@ -55,7 +56,7 @@ public:
     void repopulateDOFs(const Eigen::VectorXd &q, const Eigen::VectorXd &v);
 
     double equalityConstraintViolation(const Eigen::VectorXd &q);
-
+    void elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
 private:
     DevelopableMesh(const DevelopableMesh &other);
     DevelopableMesh &operator=(const DevelopableMesh &other);

@@ -16,7 +16,7 @@ public:
     ~SchwarzDialog();
 
     void setDefaultParameters(double r, double h, int n, int m, double angle);
-    void getChosenParameters(double &r, double &h, int &n, int &m, double &angle);
+    void getChosenParameters(double &r, double &h, int &n, int &m, double &angle, bool &open, bool &springs);
 
 private:
     Ui::SchwarzDialog *ui;

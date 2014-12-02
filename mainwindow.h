@@ -23,7 +23,7 @@ public:
 
     std::string launchSimulationOpenDialog();
     std::string launchSimulationSaveDialog();
-    void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle);
+    void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle, bool &open, bool &springs);
     void saveScreenshot();
     void saveScreenshot(const std::string &filename);
     void showError(const std::string &error);

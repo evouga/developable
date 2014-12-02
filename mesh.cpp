@@ -351,8 +351,11 @@ bool Mesh::exportOBJ(const char *filename)
     mesh_.request_face_normals();
     mesh_.request_vertex_normals();
     mesh_.update_normals();
-    opt.set(OpenMesh::IO::Options::VertexNormal);
+    // possible bug here: wrong 3rd argument?
+//    opt.set(OpenMesh::IO::Options::VertexNormal);
     return OpenMesh::IO::write_mesh(mesh_, filename, opt);
+//    std::string ext("obj");
+//    return OpenMesh::IO::write_mesh(mesh_, filename, ext);
 }
 
 void Mesh::writeInt(std::ostream &os, int i)

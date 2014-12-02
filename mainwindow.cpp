@@ -48,12 +48,12 @@ string MainWindow::launchSimulationSaveDialog()
     return string(fileDialog.selectedFiles().first().toStdString());
 }
 
-void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle)
+void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle, bool& open, bool& springs)
 {
     SchwarzDialog sd(this);
     sd.setDefaultParameters(r, h, n, m, angle);
     if(sd.exec() == QDialog::Accepted)
-        sd.getChosenParameters(r,h,n,m, angle);
+        sd.getChosenParameters(r,h,n,m,angle,open,springs);
 }
 
 void MainWindow::showError(const string &error)

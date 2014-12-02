@@ -107,7 +107,7 @@ bool DevelopableMesh::loadOBJPair(const char *mesh3D, const char *mesh2D, double
     return true;
 }
 
-void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, double angle)
+void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, double angle, bool open, bool springs)
 {
     mesh_ = OMMesh();
     double alpha = angle;
@@ -132,7 +132,7 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
     boundaries_.clear();
 
     Boundary bottom, top;
-
+    startq_.resize(3*n*(m+1));
     for(int i=0; i<=m; i++)
     {
         double z = h*i/m;
@@ -156,6 +156,10 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
                 top.bdryPos.push_back(Vector3d(x,y,z));
             }
             mesh_.add_vertex(newpt);
+            for(int k = 0; k < 3; k++)
+            {
+                startq_[3*(i*n+j)+k] = newpt[k];
+            }
 
 //            double px = j*a+basepx;
 //            OMMesh::Point newmatpt(px,py,0);
@@ -168,9 +172,32 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
 //                material_->getBoundaryVerts().push_back(bd);
 //            }
 //            material_->getMesh().add_vertex(newmatpt);
+        }
+        if(open){
+            int j = n;
+            double x = r*cos(i*alpha);
+            double y = r*sin(i*alpha);
+
+            OMMesh::Point newpt(x,y,z);
+            if(i == 0)
+            {
+                bottom.bdryVerts.push_back(mesh_.n_vertices());
+                bottom.bdryPos.push_back(Vector3d(x,y,z));
+            }
+            else if(i==m)
+            {
+                top.bdryVerts.push_back(mesh_.n_vertices());
+                top.bdryPos.push_back(Vector3d(x,y,z));
+            }
+            mesh_.add_vertex(newpt);
+            for(int k = 0; k < 3; k++)
+            {
+                startq_[3*(i*(n+1)+j)+k] = newpt[k];
+            }
 
         }
     }
+
 
     boundaries_.push_back(bottom);
     boundaries_.push_back(top);
@@ -184,32 +211,11 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
             int fidx3 = (i+1)*n+ ((j+1)%n);
 
             vector<OMMesh::VertexHandle> newface;
-//            vector<OMMesh::VertexHandle> newmatface;
             newface.push_back(mesh_.vertex_handle(fidx1));
             newface.push_back(mesh_.vertex_handle(fidx2));
             newface.push_back(mesh_.vertex_handle(fidx3));
-//            newmatface.push_back(material_->getMesh().vertex_handle(fidx1));
-//            newmatface.push_back(material_->getMesh().vertex_handle(fidx2));
-//            newmatface.push_back(material_->getMesh().vertex_handle(fidx3));
 
             mesh_.add_face(newface);
-//            material_->getMesh().add_face(newmatface);
-
-//            if(j == n-1)
-//            {
-//                // Wraps around
-//                Vector3d offset(W,0,0);
-//                int heid = material_->findHalfedge(fidx1, fidx2);
-//                assert(heid >= 0);
-//                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-//                heid = material_->findHalfedge(fidx1, fidx3);
-//                assert(heid >= 0);
-//                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-//            }
-
-//            material_->setMaterialEdge(findEdge(fidx1,fidx2), material_->findEdge(fidx1,fidx2));
-//            material_->setMaterialEdge(findEdge(fidx2,fidx3), material_->findEdge(fidx2,fidx3));
-//            material_->setMaterialEdge(findEdge(fidx3,fidx1), material_->findEdge(fidx3,fidx1));
 
             fidx2 = fidx3;
             newface[1] = mesh_.vertex_handle(fidx2);
@@ -218,57 +224,9 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
             newface[2] = mesh_.vertex_handle(fidx3);
 //            newmatface[2] = material_->getMesh().vertex_handle(fidx3);
             mesh_.add_face(newface);
-//            material_->getMesh().add_face(newmatface);
-
-//            if(j == n-1)
-//            {
-//                // Wraps around
-//                Vector3d offset(W,0,0);
-//                int heid = material_->findHalfedge(fidx1, fidx2);
-//                assert(heid >= 0);
-//                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-//                heid = material_->findHalfedge(fidx3, fidx2);
-//                assert(heid >= 0);
-//                material_->addOffset(material_->getMesh().halfedge_handle(heid), offset);
-//            }
-
-//            material_->setMaterialEdge(findEdge(fidx1,fidx2), material_->findEdge(fidx1,fidx2));
-//            material_->setMaterialEdge(findEdge(fidx2,fidx3), material_->findEdge(fidx2,fidx3));
-//            material_->setMaterialEdge(findEdge(fidx3,fidx1), material_->findEdge(fidx3,fidx1));
-
         }
     }
 
-//    for(int i=0; i<(int)mesh_.n_edges(); i++)
-//    {
-//        double len1 = edgeLength(i);
-
-//        int medge = material_->materialEdge(i);
-
-//        double len2 = material_->edgeLength(medge);
-
-//        assert(fabs(len1-len2) < 1e-6);
-//    }
-
-//    for(int i=0; i<(int)material_->getMesh().n_faces(); i++)
-//    {
-//        OMMesh::FaceHandle fh = material_->getMesh().face_handle(i);
-//        for(OMMesh::FaceHalfedgeIter fhi = material_->getMesh().fh_iter(fh); fhi; ++fhi)
-//        {
-//            OMMesh::HalfedgeHandle heh = fhi.handle();
-//            OMMesh::HalfedgeHandle nextheh = material_->getMesh().next_halfedge_handle(heh);
-//            OMMesh::VertexHandle centv = material_->getMesh().to_vertex_handle(heh);
-//            OMMesh::VertexHandle v1 = material_->getMesh().from_vertex_handle(heh);
-//            OMMesh::VertexHandle v2 = material_->getMesh().to_vertex_handle(nextheh);
-
-//            OMMesh::Point e0 = material_->getMesh().point(v1) - material_->getMesh().point(centv);
-//            OMMesh::Point e1 = material_->getMesh().point(v2) - material_->getMesh().point(centv);
-//            Vector3d ve0 = point2Vector(e0) - material_->getOffset(heh);
-//            Vector3d ve1 = point2Vector(e1) + material_->getOffset(nextheh);
-//            Vector3d cr = ve0.cross(ve1);
-//            assert(cr[2] < 0);
-//        }
-//    }
     centerCylinder();
 
     //fix Boundaries
@@ -280,11 +238,102 @@ void DevelopableMesh::buildSchwarzLantern(double r, double h, int n, int m, doub
             boundaries_[i].bdryPos[j] = point2Vector(pt);
         }
     }
-//    for(int i=0; i<(int)material_->getBoundaryVerts().size(); i++)
-//    {
-//        OMMesh::Point pt = material_->getMesh().point(material_->getMesh().vertex_handle(material_->getBoundaryVerts()[i].vertid));
-//        material_->getBoundaryVerts()[i].xpos = pt[0];
-//    }
+}
+
+
+void DevelopableMesh::buildOpenSchwarzLantern(double r, double h, int n, int m, double angle)
+{
+    mesh_ = OMMesh();
+    double alpha = angle;
+    double a = 2*r*sin(MathUtil::PI/n);
+    double b = sqrt(4*r*r*sin(alpha/2.0)*sin(alpha/2.0) + h*h/m/m);
+    double c = sqrt(4*r*r*sin(MathUtil::PI/n + alpha/2.0)*sin(MathUtil::PI/n + alpha/2.0) + h*h/m/m);
+
+
+    double s = 0.5*(a+b+c);
+    double area = sqrt(s*(s-a)*(s-b)*(s-c));
+    double dpy = 2*area/a;
+
+    double W = n*a;
+    double H = 2*n*m*area/W;
+
+    assert(fabs(H-dpy*m) < 1e-6);
+
+//    delete material_;
+//    material_ = new MaterialMesh(H);
+    boundaries_.clear();
+
+    Boundary bottom, top;
+    startq_.resize(3*(n+1)*(m+1));
+
+    for(int i=0; i<=m; i++)
+    {
+        double z = h*i/m;
+
+
+        for(int j=0; j<=n; j++)
+        {
+            double x = r*cos(2*MathUtil::PI*(j/double(n)) + i*alpha);
+            double y = r*sin(2*MathUtil::PI*(j/double(n)) + i*alpha);
+
+            OMMesh::Point newpt(x,y,z);
+            if(i == 0)
+            {
+                bottom.bdryVerts.push_back(mesh_.n_vertices());
+                bottom.bdryPos.push_back(Vector3d(x,y,z));
+            }
+            else if(i==m)
+            {
+                top.bdryVerts.push_back(mesh_.n_vertices());
+                top.bdryPos.push_back(Vector3d(x,y,z));
+            }
+            mesh_.add_vertex(newpt);
+            for(int k = 0; k < 3; k++)
+            {
+                startq_[3*(i*(n+1)+j)+k] = newpt[k];
+            }
+
+        }
+    }
+
+    boundaries_.push_back(bottom);
+    boundaries_.push_back(top);
+
+    // faces remain the same
+    for(int i=0; i<m; i++)
+    {
+        for(int j=0; j<n; j++)
+        {
+            int fidx1 = i*(n+1)+j;
+            int fidx2 = i*(n+1) + j+1;
+            int fidx3 = (i+1)*(n+1)+ (j+1);
+
+            vector<OMMesh::VertexHandle> newface;
+            newface.push_back(mesh_.vertex_handle(fidx1));
+            newface.push_back(mesh_.vertex_handle(fidx2));
+            newface.push_back(mesh_.vertex_handle(fidx3));
+
+
+            mesh_.add_face(newface);
+
+            fidx2 = fidx3;
+            newface[1] = mesh_.vertex_handle(fidx2);
+            fidx3 = (i+1)*(n+1) + j;
+            newface[2] = mesh_.vertex_handle(fidx3);
+            mesh_.add_face(newface);
+        }
+    }
+    centerCylinder();
+
+    //fix Boundaries
+    for(int i=0; i<(int)boundaries_.size(); i++)
+    {
+        for(int j=0; j<(int)boundaries_[i].bdryVerts.size(); j++)
+        {
+            OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(boundaries_[i].bdryVerts[j]));
+            boundaries_[i].bdryPos[j] = point2Vector(pt);
+        }
+    }
 }
 
 void DevelopableMesh::collapseEdge(int eid)

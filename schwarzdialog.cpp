@@ -22,11 +22,13 @@ void SchwarzDialog::setDefaultParameters(double r, double h, int n, int m, doubl
     ui->angleLineEdit->setText(QString::number(angle));
 }
 
-void SchwarzDialog::getChosenParameters(double &r, double &h, int &n, int &m, double &angle)
+void SchwarzDialog::getChosenParameters(double &r, double &h, int &n, int &m, double &angle, bool& open, bool& springs)
 {
     r = ui->radiusLineEdit->text().toDouble();
     h = ui->heightLineEdit->text().toDouble();
     n = ui->nLineEdit->text().toInt();
     m = ui->mLineEdit->text().toInt();
     angle = ui->angleLineEdit->text().toDouble();
+    open = ui->checkbox_openness->isChecked();
+    springs = ui->checkbox_springs->isChecked();
 }
