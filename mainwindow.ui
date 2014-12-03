@@ -35,7 +35,7 @@
      <widget class="QWidget" name="widget" native="true">
       <property name="minimumSize">
        <size>
-        <width>210</width>
+        <width>310</width>
         <height>310</height>
        </size>
       </property>
@@ -48,7 +48,7 @@
       <widget class="QWidget" name="verticalLayoutWidget">
        <property name="geometry">
         <rect>
-         <x>10</x>
+         <x>50</x>
          <y>10</y>
          <width>220</width>
          <height>421</height>
@@ -124,31 +124,25 @@
             <string>Test</string>
            </property>
           </widget>
-          <widget class="QSlider" name="heightSlider">
-           <property name="geometry">
-            <rect>
-             <x>20</x>
-             <y>40</y>
-             <width>160</width>
-             <height>29</height>
-            </rect>
-           </property>
-           <property name="maximum">
-            <number>100</number>
-           </property>
-           <property name="pageStep">
-            <number>16</number>
-           </property>
-           <property name="value">
-            <number>100</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-          </widget>
          </widget>
         </item>
        </layout>
+      </widget>
+      <widget class="GLWidget2D" name="GLwidget2D" native="true">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>440</y>
+         <width>300</width>
+         <height>300</height>
+        </rect>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>100</height>
+        </size>
+       </property>
       </widget>
      </widget>
     </item>
@@ -160,7 +154,7 @@
      <x>0</x>
      <y>0</y>
      <width>1600</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuVViewer">
@@ -168,6 +162,7 @@
      <string>File</string>
     </property>
     <addaction name="actionLoad_OBJ"/>
+    <addaction name="actionSave_Simulation"/>
     <addaction name="actionExit"/>
     <addaction name="actionSchwarz_Lantern"/>
    </widget>
@@ -177,6 +172,8 @@
     </property>
     <addaction name="actionReset_Camera"/>
     <addaction name="actionTake_Screenshot"/>
+    <addaction name="actionExport_OBJ"/>
+    <addaction name="actionImport_OBJ"/>
    </widget>
    <addaction name="menuVViewer"/>
    <addaction name="menuView"/>
@@ -184,7 +181,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoad_OBJ">
    <property name="text">
-    <string>Load OBJ</string>
+    <string>Load Simulation</string>
    </property>
   </action>
   <action name="actionExit">
@@ -207,12 +204,33 @@
     <string>Schwarz Lantern</string>
    </property>
   </action>
+  <action name="actionExport_OBJ">
+   <property name="text">
+    <string>Export 3D Mesh</string>
+   </property>
+  </action>
+  <action name="actionSave_Simulation">
+   <property name="text">
+    <string>Save Simulation</string>
+   </property>
+  </action>
+  <action name="actionImport_OBJ">
+   <property name="text">
+    <string>Import 3D Mesh</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>GLWidget</class>
    <extends>QWidget</extends>
    <header>glwidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GLWidget2D</class>
+   <extends>QWidget</extends>
+   <header>glwidget2d.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
