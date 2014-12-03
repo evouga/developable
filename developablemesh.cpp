@@ -7,6 +7,7 @@
 #include <fadiff.h>
 
 using namespace std;
+
 using namespace Eigen;
 using namespace fadbad;
 using namespace Ipopt;
