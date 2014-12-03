@@ -106,3 +106,12 @@ void Controller::exportOBJ(const char *filename)
         return;
     }
 }
+void Controller::importOBJ(const char *filename)
+{
+    if(!m_.importOBJ(filename))
+    {
+        QString msg = "Couldn't read file " + QString(filename) + ". Import failed.";
+        QMessageBox::warning(&mw_, "Couldn't read File", msg, QMessageBox::Ok);
+        return;
+    }
+}

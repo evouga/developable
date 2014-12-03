@@ -22,6 +22,7 @@ public:
     void deformLantern();
     void updateLanternHeight(double newheight);
     void exportOBJ(const char *filename);
+    void importOBJ(const char *filename);
 
     // Callback during solve
 

@@ -172,7 +172,7 @@ void DevelopableMesh::projectOntoConstraintManifold(DeformCallback &dc)
 
 void DevelopableMesh::crushLantern(DeformCallback &dc, double dt)
 {
-    double crushspeed = 0.1;
+    double crushspeed = 1;
     int steps = (int)(1.0/crushspeed/dt);
 //    int steps = 100;
     int framestep = steps/1000;

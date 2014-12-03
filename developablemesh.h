@@ -64,6 +64,7 @@ private:
     std::vector<Boundary> boundaries_;
     MaterialMesh *material_;
     Eigen::VectorXd startq_;
+    double spring_constant_;
 
     Eigen::Vector3d point2Vector(OMMesh::Point pt);
 

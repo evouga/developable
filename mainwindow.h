@@ -50,8 +50,10 @@ private slots:
     void on_optimizeButton_clicked();
 
     void on_actionExport_OBJ_triggered();
+    void on_actionImport_OBJ_triggered();
 
     void on_actionSave_Simulation_triggered();
+
 
 private:
     void updateGL();

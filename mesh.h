@@ -32,6 +32,7 @@ public:
     virtual ~Mesh();
 
     bool exportOBJ(const char *filename);
+    bool importOBJ(const char *filename);
 
     virtual bool loadFromStream(std::istream &is);
     virtual bool saveToStream(std::ostream &os);

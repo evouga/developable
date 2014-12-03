@@ -172,7 +172,22 @@ void MainWindow::on_actionExport_OBJ_triggered()
         }
     }
 }
-
+void MainWindow::on_actionImport_OBJ_triggered()
+{
+    QFileDialog savedialog(this, "Import 3D Geometry", ".", "Mesh Files (*.obj)");
+    savedialog.setFileMode(QFileDialog::AnyFile);
+    savedialog.setDefaultSuffix("obj");
+    savedialog.setViewMode(QFileDialog::List);
+    if(savedialog.exec())
+    {
+        QStringList filenames = savedialog.selectedFiles();
+        if(filenames.size() > 0)
+        {
+            QString filename = filenames[0];
+            cont_->importOBJ(filename.toStdString().c_str());
+        }
+    }
+}
 void MainWindow::on_actionSave_Simulation_triggered()
 {
     assert(cont_);

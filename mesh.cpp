@@ -358,6 +358,11 @@ bool Mesh::exportOBJ(const char *filename)
 //    return OpenMesh::IO::write_mesh(mesh_, filename, ext);
 }
 
+bool Mesh::importOBJ(const char *filename)
+{
+    return OpenMesh::IO::read_mesh(mesh_, filename);
+}
+
 void Mesh::writeInt(std::ostream &os, int i)
 {
     os.write((const char *)&i, sizeof(int));

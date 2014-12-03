@@ -142,11 +142,12 @@ void DevelopableMesh::buildObjective(const Eigen::VectorXd &q, double &f, Eigen:
     }
 }
 
-void DevelopableMesh::elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf){
+void DevelopableMesh::elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf)
+{
 
     double nfaces = mesh_.n_faces();
-    assert(q.size() == 3*nfaces);
-    Df.resize(3*nfaces);
+    assert(q.size() == 9*nfaces);
+    Df.resize(9*nfaces);
     Df.setZero();
     Hf.clear();
     f = 0.0;
@@ -187,27 +188,34 @@ void DevelopableMesh::elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::
         assert(local_vertex_index_v2_f1 == (local_vertex_index_v1_f1+1)%3);
         assert(local_vertex_index_v2_f2 == (local_vertex_index_v1_f1+2)%3);
 
-        assert((local_vertex_index_v1_f1 <= 2) && (local_vertex_index2 <= 2));
+        assert((local_vertex_index_v1_f1 <= 2) && (local_vertex_index_v1_f2 <= 2));
+        assert((local_vertex_index_v2_f1 <= 2) && (local_vertex_index_v2_f2 <= 2));
 
         Eigen::Vector3d q11 = q.segment<3>(3*(3*f1.idx()+local_vertex_index_v1_f1));
         Eigen::Vector3d q12 = q.segment<3>(3*(3*f2.idx()+local_vertex_index_v1_f2));
 
-        Eigen::Vector3d q21 = q.segment<3>(3*(3*f1.idx()+local_vertex_index1));
-        Eigen::Vector3d q22 = q.segment<3>(3*(3*f2.idx()+local_vertex_index2));
+        Eigen::Vector3d q21 = q.segment<3>(3*(3*f1.idx()+local_vertex_index_v1_f1));
+        Eigen::Vector3d q22 = q.segment<3>(3*(3*f2.idx()+local_vertex_index_v2_f2));
 
         for(int i = 0; i < 3; i++){
-            Df[3*(3*f1.idx()+local_vertex_index_v1_f1)+i] += 2 * spring_constant * (q11[i]-q12[i]);
-            Df[3*(3*f2.idx()+local_vertex_index_v1_f2)+i] += 2 * spring_constant * (q12[i]-q11[i]);
-            Df[3*(3*f1.idx()+local_vertex_index_v2_f1)+i] += 2 * spring_constant * (q21[i]-q22[i]);
-            Df[3*(3*f2.idx()+local_vertex_index_v2_f2)+i] += 2 * spring_constant * (q22[i]-q21[i]);
+            Df[3*(3*f1.idx()+local_vertex_index_v1_f1)+i] += 2 * spring_constant_ * (q11[i]-q12[i]);
+            Df[3*(3*f2.idx()+local_vertex_index_v1_f2)+i] += 2 * spring_constant_ * (q12[i]-q11[i]);
+            Df[3*(3*f1.idx()+local_vertex_index_v2_f1)+i] += 2 * spring_constant_ * (q21[i]-q22[i]);
+            Df[3*(3*f2.idx()+local_vertex_index_v2_f2)+i] += 2 * spring_constant_ * (q22[i]-q21[i]);
 
             // diagonal entries
             Hf.push_back(T(3*(3*f1.idx()+local_vertex_index_v1_f1)+i, \
                            3*(3*f1.idx()+local_vertex_index_v1_f1)+i, \
-                           2*spring_constant));
+                           2*spring_constant_));
             Hf.push_back(T(3*(3*f2.idx()+local_vertex_index_v2_f2)+i, \
                            3*(3*f2.idx()+local_vertex_index_v2_f2)+i, \
-                           2*spring_constant));
+                           2*spring_constant_));
+            Hf.push_back(T(3*(3*f2.idx()+local_vertex_index_v1_f2)+i, \
+                           3*(3*f2.idx()+local_vertex_index_v1_f2)+i, \
+                           2*spring_constant_));
+            Hf.push_back(T(3*(3*f1.idx()+local_vertex_index_v2_f1)+i, \
+                           3*(3*f1.idx()+local_vertex_index_v2_f1)+i, \
+                           2*spring_constant_));
 
             // mixed derivatives
             int lower_index = min(3*(3*f1.idx()+local_vertex_index_v1_f1)+i,\
@@ -216,7 +224,7 @@ void DevelopableMesh::elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::
                                  3*(3*f2.idx()+local_vertex_index_v1_f2)+i);
             Hf.push_back(T(lower_index, \
                            upper_index, \
-                           -2*spring_constant));
+                           -2*spring_constant_));
 
             lower_index = min(3*(3*f1.idx()+local_vertex_index_v2_f1)+i,\
                                  3*(3*f2.idx()+local_vertex_index_v2_f2)+i);
@@ -224,49 +232,62 @@ void DevelopableMesh::elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::
                                  3*(3*f2.idx()+local_vertex_index_v2_f2)+i);
             Hf.push_back(T(lower_index, \
                            upper_index, \
-                           -2*spring_constant));
+                           -2*spring_constant_));
         }
         f += (q11-q12).squaredNorm();
         f += (q21-q22).squaredNorm();
-
         assert(!isnan(f));
 
     }
-    f *= spring_constant;
+    f *= spring_constant_;
 
     // energy contribution from vertex displacement penalty
-    OMMesh::VertexIter vi = mesh_.vertices_begin();
-    for(; vi != mesh_.vertices_end(); vi++){
-        unsigned int num_adjacent_faces = 0;
-        Eigen::Vector3d basepos = startq_.segment<3>(3*vi->ind());
+//    OMMesh::VertexIter vi = mesh_.vertices_begin();
+//    for(; vi != mesh_.vertices_end(); vi++){
+//        unsigned int num_adjacent_faces = 0;
+//        Eigen::Vector3d basepos = startq_.segment<3>(3*vi->idx());
 
-        Eigen::Vector3d avg;
-        OMMesh::VertexFaceIter vfi = mesh_.vf_iter(*vi);
-        for(; vfi.is_valid(); vfi++){
-            unsigned int local_vertex_index = 0;
-            for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(vfi); *fvi!=v1; fvi++){
-                local_vertex_index++;
-            }
-            avg += q.segment<3>(3*vfi->idx()+local_vertex_index);
-        }
+//        Eigen::Vector3d avg(0,0,0);
 
-        avg /= num_adjacent_faces;
-        for(int i = 0; i< 3; i++){
-            for(vfi = mesh_.vf_iter(*vi); vfi.is_valid(); vfi++){
-                unsigned int local_vertex_index = 0;
-                for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(vfi); *fvi!=v1; fvi++){
-                    local_vertex_index++;
-                }
-                Df[3*(3*vfi->idx()+local_vertex_index)+i] += (avg[i])/num_adjacent_faces - basepos[i];
+//        for(OMMesh::VertexFaceIter vfi = mesh_.vf_iter(*vi); vfi.is_valid(); vfi++){
+//            unsigned int local_vertex_index = 0;
+//            for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(*vfi); *fvi!=*vi; fvi++){
+//                local_vertex_index++;
+//            }
+//            avg += q.segment<3>(3*vfi->idx()+local_vertex_index);
+//        }
+//        avg /= num_adjacent_faces;
+//        f += 0.5*(avg-basepos).squaredNorm();
 
-                int lower_index = min(3*(3*vfi->idx()+local_vertex_index)+i,);
-                int upper_index = min(3*(3*vfi->idx()+local_vertex_index)+i);
+//        // derivatives
+//        for(int i = 0; i< 3; i++){
+//            for(OMMesh::VertexFaceIter vfi = mesh_.vf_iter(*vi); vfi.is_valid(); vfi++){
+//                unsigned int local_vertex_index_1 = 0;
+//                for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(*vfi); *fvi!=*vi; fvi++){
+//                    local_vertex_index_1++;
+//                }
+//                Df[3*(3*vfi->idx()+local_vertex_index_1)+i] += (avg[i])/num_adjacent_faces - basepos[i];
 
-                Hf.push_back();
-            }
-        }
-        f += (avg-basepos).squaredNorm();
-    }
+
+//                for(OMMesh::VertexFaceIter vfi2 = mesh_.vf_iter(*vi);vfi2.is_valid(); vfi2++){
+//                    unsigned int local_vertex_index_2 = 0;
+//                    for(OMMesh::FaceVertexIter fvi2 = mesh_.fv_iter(*vfi2); fvi2.is_valid(); fvi2++){
+//                        local_vertex_index_2++;
+//                    }
+
+//                    unsigned int ind1 = 3*(3*vfi->idx()+local_vertex_index_1)+i;
+//                    unsigned int ind2 = 3*(3*vfi2->idx()+local_vertex_index_2)+i;
+
+//                    if(ind1 <= ind2){
+//                        Hf.push_back(T(ind1,ind2,1.0/(num_adjacent_faces*num_adjacent_faces)));
+
+//                    }
+//                }
+
+//            }
+//        }
+
+//    }
 }
 void DevelopableMesh::buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, vector<vector<T> > &Hg)
 {

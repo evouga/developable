@@ -56,11 +56,6 @@ bool ProjectionNLP::get_bounds_info(Ipopt::Index n, Ipopt::Number *x_l, Ipopt::N
         g_l[i] = 0;
         g_u[i] = 0;
     }
-//    for(int i=(int)dm_.mesh_.n_edges(); i < m; i++)
-//    {
-//        g_l[i] = 0;
-//        g_u[i] = std::numeric_limits<double>::infinity();
-//    }
 
     return true;
 }
@@ -85,6 +80,8 @@ bool ProjectionNLP::eval_f(Ipopt::Index n, const Ipopt::Number *x, bool , Ipopt:
         q[i] = x[i];
     }
     obj_value = 0.5*(q-startq_).squaredNorm();
+
+
 
     return true;
 }
