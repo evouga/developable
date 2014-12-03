@@ -21,16 +21,17 @@ public:
 
     void setController(Controller &cont);
 
-    std::string launchMeshOpenDialog();
-    void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m);
+    std::string launchSimulationOpenDialog();
+    std::string launchSimulationSaveDialog();
+    void launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle, bool &open, bool &springs);
     void saveScreenshot();
     void saveScreenshot(const std::string &filename);
     void showError(const std::string &error);
     void centerCamera();
     bool showWireframe() const;
     bool smoothShade() const;
-    void setCylinderHeight(double height);
-\
+    void repaintMesh();
+
 private slots:
     void on_actionExit_triggered();
 
@@ -48,11 +49,14 @@ private slots:
 
     void on_optimizeButton_clicked();
 
-    void on_heightSlider_actionTriggered(int action);
+    void on_actionExport_OBJ_triggered();
+    void on_actionImport_OBJ_triggered();
+
+    void on_actionSave_Simulation_triggered();
+
 
 private:
     void updateGL();
-
     Ui::MainWindow *ui;
     Controller *cont_;
 };

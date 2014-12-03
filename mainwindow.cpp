@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QDateTime>
 #include "schwarzdialog.h"
+#include <QPixmap>
 
 using namespace std;
 
@@ -26,22 +27,33 @@ void MainWindow::setController(Controller &cont)
 {
     cont_ = &cont;
     ui->GLwidget->setController(cont);
+    ui->GLwidget2D->setController(cont);
 }
 
-string MainWindow::launchMeshOpenDialog()
+string MainWindow::launchSimulationOpenDialog()
 {
     string filename = string(QFileDialog::getOpenFileName(this,
-        tr("Open Mesh"), "", tr("Mesh Files (*.obj *.ply)")).toAscii());
+        tr("Open Simulation"), "", tr("Simulation Files (*.sim)")).toStdString());
 
     return filename;
 }
 
-void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m)
+string MainWindow::launchSimulationSaveDialog()
+{
+    QFileDialog fileDialog(this, "Save Simulation");
+    fileDialog.setNameFilter("Simulation Files (*.sim)");
+    fileDialog.setDirectory(QDir::currentPath());
+    fileDialog.setDefaultSuffix("sim");
+    fileDialog.exec();
+    return string(fileDialog.selectedFiles().first().toStdString());
+}
+
+void MainWindow::launchSchwarzLanternDialog(double &r, double &h, int &n, int &m, double &angle, bool& open, bool& springs)
 {
     SchwarzDialog sd(this);
-    sd.setDefaultParameters(r, h, n, m);
+    sd.setDefaultParameters(r, h, n, m, angle);
     if(sd.exec() == QDialog::Accepted)
-        sd.getChosenParameters(r,h,n,m);
+        sd.getChosenParameters(r,h,n,m,angle,open,springs);
 }
 
 void MainWindow::showError(const string &error)
@@ -54,6 +66,7 @@ void MainWindow::showError(const string &error)
 void MainWindow::centerCamera()
 {
     ui->GLwidget->centerCamera();
+    ui->GLwidget2D->centerCamera();
 }
 
 
@@ -61,16 +74,18 @@ void MainWindow::saveScreenshot()
 {
     QDateTime dateTime = QDateTime::currentDateTime();
     QString dateTimeString = dateTime.toString("dd_MM_yy_hh_mm_ss_zzz");
-    string filename = "screen_" + string(dateTimeString.toAscii()) + ".png";
+    string filename = "screen_" + string(dateTimeString.toStdString()) + ".png";
     saveScreenshot(filename);
 }
 
 void MainWindow::saveScreenshot(const string &filename)
 {
     updateGL();
+    QPixmap p = QPixmap::grabWidget(this);
     QString curdir = QDir::currentPath();
-    string fullname = string(curdir.toAscii()) + "/output/" + filename;
-    ui->GLwidget->saveScreenshot(fullname);
+    string fullname = string(curdir.toStdString()) + "/output/" + filename;
+    p.save(QString::fromUtf8(fullname.c_str()));
+    //ui->GLwidget->saveScreenshot(fullname);
 }
 
 bool MainWindow::showWireframe() const
@@ -83,18 +98,16 @@ bool MainWindow::smoothShade() const
     return ui->smoothShadeCheckBox->isChecked();
 }
 
+void MainWindow::repaintMesh()
+{
+    updateGL();
+}
+
 void MainWindow::updateGL()
 {
     ui->GLwidget->updateGL();
+    ui->GLwidget2D->updateGL();
 }
-
-void MainWindow::setCylinderHeight(double height)
-{
-    ui->heightSlider->setMaximum(100*height);
-    ui->heightSlider->setValue(100*height);
-    repaint();
-}
-
 
 void MainWindow::on_actionExit_triggered()
 {
@@ -105,7 +118,7 @@ void MainWindow::on_actionExit_triggered()
 void MainWindow::on_actionLoad_OBJ_triggered()
 {
     assert(cont_);
-    cont_->loadOBJ();
+    cont_->loadSimulation();
 }
 
 void MainWindow::on_actionReset_Camera_triggered()
@@ -142,10 +155,41 @@ void MainWindow::on_optimizeButton_clicked()
     updateGL();
 }
 
-void MainWindow::on_heightSlider_actionTriggered(int )
+void MainWindow::on_actionExport_OBJ_triggered()
 {
-    int position = ui->heightSlider->value();
-    double height = position/100.0;
-    cont_->updateLanternHeight(height);
-    updateGL();
+    QFileDialog savedialog(this, "Export 3D Geometry", ".", "Mesh Files (*.obj)");
+    savedialog.setFileMode(QFileDialog::AnyFile);
+    savedialog.setDefaultSuffix("obj");
+    savedialog.setViewMode(QFileDialog::List);
+    savedialog.setAcceptMode(QFileDialog::AcceptSave);
+    if(savedialog.exec())
+    {
+        QStringList filenames = savedialog.selectedFiles();
+        if(filenames.size() > 0)
+        {
+            QString filename = filenames[0];
+            cont_->exportOBJ(filename.toStdString().c_str());
+        }
+    }
+}
+void MainWindow::on_actionImport_OBJ_triggered()
+{
+    QFileDialog savedialog(this, "Import 3D Geometry", ".", "Mesh Files (*.obj)");
+    savedialog.setFileMode(QFileDialog::AnyFile);
+    savedialog.setDefaultSuffix("obj");
+    savedialog.setViewMode(QFileDialog::List);
+    if(savedialog.exec())
+    {
+        QStringList filenames = savedialog.selectedFiles();
+        if(filenames.size() > 0)
+        {
+            QString filename = filenames[0];
+            cont_->importOBJ(filename.toStdString().c_str());
+        }
+    }
+}
+void MainWindow::on_actionSave_Simulation_triggered()
+{
+    assert(cont_);
+    cont_->saveSimulation();
 }

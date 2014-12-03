@@ -2,6 +2,7 @@
 #include "mesh.h"
 #include <GL/glu.h>
 #include <Eigen/Dense>
+#include <vector>
 \
 using namespace std;
 using namespace Eigen;
@@ -16,9 +17,99 @@ Mesh::~Mesh()
     gluDeleteQuadric(quadric_);
 }
 
-bool Mesh::loadMesh(const string &filename)
+bool Mesh::saveToStream(std::ostream &os)
 {
-    return OpenMesh::IO::read_mesh(mesh_, filename);
+    int nverts = mesh_.n_vertices();
+    int nfaces = mesh_.n_faces();
+    writeInt(os, nverts);
+    for(int i=0; i<nverts; i++)
+    {
+        OMMesh::Point pt = mesh_.point(mesh_.vertex_handle(i));
+        writeDouble(os, pt[0]);
+        writeDouble(os, pt[1]);
+        writeDouble(os, pt[2]);
+
+        OMMesh::Point vel = mesh_.data(mesh_.vertex_handle(i)).vel();
+        writeDouble(os, vel[0]);
+        writeDouble(os, vel[1]);
+        writeDouble(os, vel[2]);
+    }
+    writeInt(os, nfaces);
+    for(int i=0; i<nfaces; i++)
+    {
+        OMMesh::FaceHandle fh = mesh_.face_handle(i);
+        vector<int> nfverts;
+        for(OMMesh::FaceVertexIter fvi = mesh_.fv_iter(fh); fvi; ++fvi)
+            nfverts.push_back(fvi.handle().idx());
+        writeInt(os, (int)nfverts.size());
+        for(int j=0; j<(int)nfverts.size(); j++)
+            writeInt(os, nfverts[j]);
+    }
+    return os;
+}
+
+bool Mesh::loadFromStream(std::istream &is)
+{
+    mesh_ = OMMesh();
+    int nverts = readInt(is);
+    if(!is)
+    {
+        assert(false);
+        return false;
+    }
+    for(int i=0; i<nverts; i++)
+    {
+        OMMesh::Point newpt;
+        newpt[0] = readDouble(is);
+        newpt[1] = readDouble(is);
+        newpt[2] = readDouble(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+
+        OMMesh::Point newvel;
+        newvel[0] = readDouble(is);
+        newvel[1] = readDouble(is);
+        newvel[2] = readDouble(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+
+        OMMesh::VertexHandle newvh = mesh_.add_vertex(newpt);
+        mesh_.data(newvh).set_vel(newvel);
+    }
+    int nfaces = readInt(is);
+    if(!is)
+    {
+        assert(false);
+        return false;
+    }
+    for(int i=0; i<nfaces; i++)
+    {
+        vector<OMMesh::VertexHandle> faceverts;
+        int nfverts = readInt(is);
+        if(!is)
+        {
+            assert(false);
+            return false;
+        }
+        for(int j=0; j<nfverts; j++)
+        {
+            int vidx = readInt(is);
+            if(!is)
+            {
+                assert(false);
+                return false;
+            }
+            faceverts.push_back(mesh_.vertex_handle(vidx));
+        }
+        mesh_.add_face(faceverts);
+    }
+    return true;
 }
 
 void Mesh::render(bool showWireframe, bool smoothShade)
@@ -56,8 +147,9 @@ void Mesh::render(bool showWireframe, bool smoothShade)
 
     for(int i=0; i<(int)mesh_.n_vertices(); i++)
     {
+        Vector3d color;
         OMMesh::VertexHandle v = mesh_.vertex_handle(i);
-        Vector3d color(0.0, 186/255., 0.0);
+        color = Vector3d(0.0, 186/255., 0.0);
 
         OMMesh::Point pt = mesh_.point(v);
         OMMesh::Point n;
@@ -214,4 +306,93 @@ double Mesh::faceArea(int fidx) const
     Vector3d e1 = points[1]-points[0];
     Vector3d e2 = points[2]-points[0];
     return 0.5 * e1.cross(e2).norm();
+}
+
+int Mesh::findEdge(int vid1, int vid2)
+{
+    OMMesh::VertexHandle vhstart = mesh_.vertex_handle(vid1);
+    for(OMMesh::VertexOHalfedgeIter voh = mesh_.voh_iter(vhstart); voh; ++voh)
+    {
+        int tov = mesh_.to_vertex_handle(voh.handle()).idx();
+        if(tov == vid2)
+            return mesh_.edge_handle(voh.handle()).idx();
+    }
+    return -1;
+}
+
+int Mesh::findHalfedge(int vid1, int vid2)
+{
+    OMMesh::VertexHandle vhstart = mesh_.vertex_handle(vid1);
+    for(OMMesh::VertexOHalfedgeIter voh = mesh_.voh_iter(vhstart); voh; ++voh)
+    {
+        int tov = mesh_.to_vertex_handle(voh.handle()).idx();
+        if(tov == vid2)
+            return voh.handle().idx();
+    }
+    return -1;
+}
+
+double Mesh::edgeLength(int vid1, int vid2)
+{
+    int eidx = findEdge(vid1, vid2);
+    return mesh_.calc_edge_length(mesh_.edge_handle(eidx));
+}
+
+double Mesh::edgeLength(int eid)
+{
+    OMMesh::EdgeHandle eh = mesh_.edge_handle(eid);
+    OMMesh::HalfedgeHandle heh = mesh_.halfedge_handle(eh, 0);
+    return edgeLength(mesh_.from_vertex_handle(heh).idx(), mesh_.to_vertex_handle(heh).idx());
+}
+
+bool Mesh::exportOBJ(const char *filename)
+{
+    OpenMesh::IO::Options opt;
+    mesh_.request_face_normals();
+    mesh_.request_vertex_normals();
+    mesh_.update_normals();
+    // possible bug here: wrong 3rd argument?
+//    opt.set(OpenMesh::IO::Options::VertexNormal);
+    return OpenMesh::IO::write_mesh(mesh_, filename, opt);
+//    std::string ext("obj");
+//    return OpenMesh::IO::write_mesh(mesh_, filename, ext);
+}
+
+bool Mesh::importOBJ(const char *filename)
+{
+    return OpenMesh::IO::read_mesh(mesh_, filename);
+}
+
+void Mesh::writeInt(std::ostream &os, int i)
+{
+    os.write((const char *)&i, sizeof(int));
+}
+
+void Mesh::writeDouble(std::ostream &os, double d)
+{
+    os.write((const char *)&d, sizeof(double));
+}
+
+void Mesh::writeBool(std::ostream &os, bool b)
+{
+    writeInt(os, b ? 1 : 0);
+}
+
+int Mesh::readInt(std::istream &is)
+{
+    int result;
+    is.read((char *)&result, sizeof(int));
+    return result;
+}
+
+double Mesh::readDouble(std::istream &is)
+{
+    double result;
+    is.read((char *)&result, sizeof(double));
+    return result;
+}
+
+bool Mesh::readBool(std::istream &is)
+{
+    return readInt(is) != 0;
 }

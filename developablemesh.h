@@ -3,140 +3,85 @@
 
 #include <vector>
 #include <string>
+#include <map>
 #include "mesh.h"
 #include <Eigen/Sparse>
-#include <fadiff.h>
-#define HAVE_CSTDDEF
-#include <coin/IpIpoptApplication.hpp>
+#include <FADBAD++/fadiff.h>
+#include "autodiffTemplates.h"
+#include "materialmesh.h"
 
 typedef Eigen::Triplet<double> T;
 
-struct BoundaryCurve
+class DeformCallback
 {
-    std::vector<int> edges;
-    double arclength;
-    double height;
-    double targetheight;
+public:
+    virtual void repaintCallback()=0;
+};
+
+struct Boundary
+{
+    std::vector<int> bdryVerts;
+    std::vector<Eigen::Vector3d> bdryPos;
 };
 
 class DevelopableMesh : public Mesh
 {
 public:
     DevelopableMesh();
+    ~DevelopableMesh();
 
-    void buildSchwarzLantern(double r, double h, int n, int m);
-    virtual bool loadMesh(const std::string &filename);
+    enum CriticalPointType {CPT_INDETERMINATE, CPT_SADDLE, CPT_MAXIMUM, CPT_MINIMUM};
 
-    void getBoundaryHeights(std::vector<double> &heights);
+    void buildSchwarzLantern(double r, double h, int n, int m, double angle, bool open, bool springs);
+    void buildOpenSchwarzLantern(double r, double h, int n, int m, double angle);
+    bool loadOBJPair(const char *mesh3D, const char *mesh2D, double W, double H);
+    virtual bool loadFromStream(std::istream &is);
+    virtual bool saveToStream(std::ostream &os);
 
-    void deformLantern(int maxiters);
-
-private:
-    std::vector<BoundaryCurve> boundaries_;
-    double surfacearea_;
-
-    void identifyBoundaries();
-    void calculateSurfaceArea();
-    Eigen::Vector3d point2Vector(OMMesh::Point pt);
-
+    void projectOntoConstraintManifold(DeformCallback &dc);
+    void deformLantern(DeformCallback &dc);
+    void crushLantern(DeformCallback &dc, double dt);
     void buildObjective(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
     void buildConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &g, std::vector<T> &Dg, std::vector<std::vector<T> > &Hg);
+    void buildInversionConstraints(const Eigen::VectorXd &q, Eigen::VectorXd &h, std::vector<T> &Dh, std::vector<std::vector<T> > &Hh);
+    void radiusOverlapConstraint(const Eigen::VectorXd &q, OMMesh::HalfedgeHandle heh, double &g, std::vector<std::pair<int, double> > &Dg, std::vector<T> &Hg);
+    bool shouldCollapseEdges(const Eigen::VectorXd &q);
+    int findCollapsibleEdge(const Eigen::VectorXd &q);
 
-    bool collapseShortEdges();
-    void computeCreaseWidths(std::vector<double> &widths);
-    double turningAngle(int edge);
+    Eigen::Vector2d materialCenter();
+    double materialRadius();
+    void renderMaterial();
 
-    void collapseEdge(int edgeidx);
-    bool canCollapseEdge(int edgeidx);
+    void gatherDOFs(Eigen::VectorXd &q, Eigen::VectorXd &v);
+    void repopulateDOFs(const Eigen::VectorXd &q, const Eigen::VectorXd &v);
+
+    double equalityConstraintViolation(const Eigen::VectorXd &q);
+    void elasticEnergy(const Eigen::VectorXd &q, double &f, Eigen::VectorXd &Df, std::vector<T> &Hf);
+private:
+    DevelopableMesh(const DevelopableMesh &other);
+    DevelopableMesh &operator=(const DevelopableMesh &other);
+
+    std::vector<Boundary> boundaries_;
+    MaterialMesh *material_;
+    Eigen::VectorXd startq_;
+    double spring_constant_;
+
+    Eigen::Vector3d point2Vector(OMMesh::Point pt);
+
     void centerCylinder();
 
-    template<class T> static T norm(T *v);
-    template<class T> static void cross(T *v1, T *v2, T *result);
-    template<class T> static void normalize(T *v);
-    template<class T> static T dot(T *v1, T *v2);
+    void collapseEdges();
 
-    friend class IpoptSolver;
+    bool canCollapseEdge(int eid);
+    void collapseEdge(int eid);
+
+    int activeInequalityConstraints(const Eigen::VectorXd &q);
+    void buildConstraintBasis(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &normalspace, std::vector<Eigen::VectorXd> &tangentspace);
+    CriticalPointType checkConstrainedHessian(const Eigen::VectorXd &q, std::vector<Eigen::VectorXd> &negdirs);
+    void gatherInfo(const Eigen::VectorXd &q);
+
+    void flushOutNANs(const Eigen::VectorXd &q);
+    void perturbConfiguration(Eigen::VectorXd &q, const std::vector<Eigen::VectorXd> &dirs, double mag);
 };
-
-class IpoptSolver : public Ipopt::TNLP
-{
-public:
-    IpoptSolver(int n, int m, int nnz_j, int nnz_h, Eigen::VectorXd &initq, DevelopableMesh &mesh);
-
-    virtual bool get_nlp_info(Ipopt::Index& n, Ipopt::Index& m, Ipopt::Index& nnz_jac_g,
-                              Ipopt::Index& nnz_h_lag, IndexStyleEnum& index_style);
-
-    virtual bool get_bounds_info(Ipopt::Index n, Ipopt::Number* x_l, Ipopt::Number* x_u,
-                                 Ipopt::Index m, Ipopt::Number* g_l, Ipopt::Number* g_u);
-
-    virtual bool get_starting_point(Ipopt::Index n, bool init_x, Ipopt::Number* x,
-                                    bool init_z, Ipopt::Number* z_L, Ipopt::Number* z_U,
-                                    Ipopt::Index m, bool init_lambda, Ipopt::Number* lambda);
-
-    virtual bool eval_f(Ipopt::Index n, const Ipopt::Number* x,
-                        bool new_x, Ipopt::Number& obj_value);
-
-    virtual bool eval_grad_f(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
-                             Ipopt::Number* grad_f);
-
-    virtual bool eval_g(Ipopt::Index n, const Ipopt::Number* x,
-                        bool new_x, Ipopt::Index m, Ipopt::Number* g);
-
-    virtual bool eval_jac_g(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
-                            Ipopt::Index m, Ipopt::Index nele_jac, Ipopt::Index* iRow,
-                            Ipopt::Index *jCol, Ipopt::Number* values);
-
-    virtual bool eval_h(Ipopt::Index n, const Ipopt::Number* x, bool new_x,
-                        Ipopt::Number obj_factor, Ipopt::Index m, const Ipopt::Number* lambda,
-                        bool new_lambda, Ipopt::Index nele_hess, Ipopt::Index* iRow,
-                        Ipopt::Index* jCol, Ipopt::Number* values);
-
-    virtual void finalize_solution(Ipopt::SolverReturn status, Ipopt::Index n,
-                                   const Ipopt::Number* x, const Ipopt::Number* z_L,
-                                   const Ipopt::Number* z_U, Ipopt::Index m, const Ipopt::Number* g,
-                                   const Ipopt::Number* lambda, Ipopt::Number obj_value,
-                                   const Ipopt::IpoptData* ip_data,
-                                   Ipopt::IpoptCalculatedQuantities* ip_cq);
-private:
-    int n_, m_;
-    int nnz_j_, nnz_h_;
-    Eigen::VectorXd initq_;
-    DevelopableMesh &mesh_;
-};
-
-
-
-
-template<class T>
-void DevelopableMesh::cross(T *v1, T *v2, T *result)
-{
-    result[0] = v1[1]*v2[2] - v1[2]*v2[1];
-    result[1] = v1[2]*v2[0] - v1[0]*v2[2];
-    result[2] = v1[0]*v2[1] - v1[1]*v2[0];
-}
-
-template<class T> T DevelopableMesh::norm(T *v)
-{
-    T result = 0;
-    for(int i=0; i<3; i++)
-        result += v[i]*v[i];
-    return sqrt(result);
-}
-
-template<class T> void DevelopableMesh::normalize(T *v)
-{
-    T n = norm(v);
-    for(int i=0; i<3; i++)
-        v[i] /= n;
-}
-
-template<class T> T DevelopableMesh::dot(T *v1, T *v2)
-{
-    T result = 0;
-    for(int i=0; i<3; i++)
-        result += v1[i]*v2[i];
-    return result;
-}
-
 
 #endif // DEVELOPABLEMESH_H

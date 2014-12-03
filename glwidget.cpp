@@ -98,6 +98,7 @@ GLWidget::MouseAction GLWidget::deduceAction(QMouseEvent *event)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
+
     int x = event->pos().x();
     int y = event->pos().y();
     Vector2d pos;
